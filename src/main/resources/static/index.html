@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Carpintería El Roble - Simulador</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f0f0f0; }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px 25px;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .panel-params {
+            background: white;
+            margin: 15px;
+            padding: 20px;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+
+        .panel-params h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 5px;
+        }
+
+        .params-grid {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .param-item { display: flex; flex-direction: column; gap: 4px; }
+        .param-item label { font-size: 0.85em; font-weight: bold; color: #555; }
+        .param-item input {
+            padding: 7px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.95em;
+            width: 160px;
+        }
+
+        .btn-simular {
+            padding: 8px 25px;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1em;
+            cursor: pointer;
+            height: 35px;
+        }
+        .btn-simular:hover { background: #3d5166; }
+
+        .panel-stats {
+            background: white;
+            margin: 0 15px 15px 15px;
+            padding: 15px 20px;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            display: none;
+        }
+
+        .panel-stats h3 { margin-bottom: 10px; color: #2c3e50; }
+
+        .stats-grid {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background: #ecf0f1;
+            border-left: 4px solid #2c3e50;
+            padding: 10px 15px;
+            border-radius: 4px;
+            min-width: 200px;
+        }
+
+        .stat-box .stat-label { font-size: 0.8em; color: #666; margin-bottom: 3px; }
+        .stat-box .stat-value { font-size: 1.3em; font-weight: bold; color: #2c3e50; }
+
+        .panel-grilla {
+            background: white;
+            margin: 0 15px 15px 15px;
+            padding: 15px 20px;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            display: none;
+        }
+
+        .panel-grilla h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .tabla-wrapper {
+            overflow-x: auto;
+            border: 1px solid #ccc;
+        }
+
+        table {
+            border-collapse: collapse;
+            font-size: 0.78em;
+            white-space: nowrap;
+        }
+
+        /* Encabezados de grupo */
+        thead tr.fila-grupo th {
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 5px 8px;
+            border: 1px solid #1a252f;
+            font-size: 0.85em;
+        }
+
+        /* Encabezados de columna */
+        thead tr.fila-col th {
+            background: #4a6fa5;
+            color: white;
+            text-align: center;
+            padding: 5px 6px;
+            border: 1px solid #3a5985;
+            font-size: 0.78em;
+        }
+
+        /* Filas de datos */
+        tbody tr:nth-child(even) { background: #f7f9fc; }
+        tbody tr:hover { background: #eaf0fb; }
+
+        tbody td {
+            padding: 4px 7px;
+            border: 1px solid #ddd;
+            text-align: center;
+            color: #333;
+        }
+
+        /* Colores por sección */
+        .col-base { background-color: inherit; }
+        .col-est { background-color: #fef9e7; }
+        .col-med { background-color: #eafaf1; }
+        .col-c1  { background-color: #eaf4fb; }
+        .col-c2  { background-color: #fdf2f8; }
+        .col-cola { background-color: #fdfefe; }
+        .col-ayud { background-color: #fef5e4; }
+        .col-stats { background-color: #f2f3f4; }
+        .col-mueble { background-color: #f9f9f9; }
+
+        /* Separador entre grupos de muebles */
+        .sep-mueble { border-left: 2px solid #aaa !important; }
+
+        /* Fila de ultima jornada */
+        tr.ultima-fila td { background: #d5e8d4; font-weight: bold; }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            display: none;
+        }
+
+        .error-msg {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .info-iteraciones {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .panel-ultima {
+            background: white;
+            margin: 0 15px 15px 15px;
+            padding: 15px 20px;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            display: none;
+        }
+
+        .panel-ultima h3 { margin-bottom: 10px; color: #2c3e50; }
+    </style>
+</head>
+<body>
+
+<div class="header">🪵 Carpintería "El Roble" — Simulador de Colas</div>
+
+<!-- PARÁMETROS -->
+<div class="panel-params">
+    <h3>Parámetros de Simulación</h3>
+    <div class="params-grid">
+        <div class="param-item">
+            <label>Tiempo máximo (X) en minutos</label>
+            <input type="number" id="tiempoMaximo" value="480" min="1">
+        </div>
+        <div class="param-item">
+            <label>Iteraciones a mostrar (i)</label>
+            <input type="number" id="iteracionesAMostrar" value="20" min="1" max="100000">
+        </div>
+        <div class="param-item">
+            <label>Hora desde (j) en minutos</label>
+            <input type="number" id="horaDesde" value="0" min="0">
+        </div>
+        <div class="param-item">
+            <button class="btn-simular" onclick="ejecutarSimulacion()">▶ Simular</button>
+        </div>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+</div>
+
+<div class="loading" id="loading">⏳ Ejecutando simulación...</div>
+
+<!-- ESTADÍSTICAS FINALES -->
+<div class="panel-stats" id="panelStats">
+    <h3>📊 Estadísticas Finales</h3>
+    <div class="stats-grid" id="statsGrid"></div>
+</div>
+
+<!-- ÚLTIMA FILA -->
+<div class="panel-ultima" id="panelUltima">
+    <h3>⏱ Última fila — Instante final (t = <span id="tiempoFinal"></span> min)</h3>
+    <div class="tabla-wrapper">
+        <table id="tablaUltima"></table>
+    </div>
+</div>
+
+<!-- GRILLA PRINCIPAL -->
+<div class="panel-grilla" id="panelGrilla">
+    <h3>📋 Vector de Estados</h3>
+    <div class="info-iteraciones" id="infoIteraciones"></div>
+    <div class="tabla-wrapper">
+        <table id="tablaVector"></table>
+    </div>
+</div>
+
+<script>
+async function ejecutarSimulacion() {
+    const tiempoMaximo = parseFloat(document.getElementById('tiempoMaximo').value);
+    const iteracionesAMostrar = parseInt(document.getElementById('iteracionesAMostrar').value);
+    const horaDesde = parseFloat(document.getElementById('horaDesde').value);
+
+    if (isNaN(tiempoMaximo) || tiempoMaximo <= 0) {
+        mostrarError('El tiempo máximo debe ser mayor a 0.');
+        return;
+    }
+
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('panelStats').style.display = 'none';
+    document.getElementById('panelGrilla').style.display = 'none';
+    document.getElementById('panelUltima').style.display = 'none';
+    document.getElementById('errorMsg').style.display = 'none';
+
+    try {
+        const resp = await fetch('/api/simular', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tiempoMaximo, iteracionesAMostrar, horaDesde })
+        });
+
+        if (!resp.ok) throw new Error('Error en el servidor');
+        const data = await resp.json();
+
+        mostrarEstadisticas(data);
+        mostrarGrilla(data);
+        mostrarUltimaFila(data);
+
+    } catch (e) {
+        mostrarError('Error al ejecutar la simulación: ' + e.message);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function fmt(val, decimals = 2) {
+    if (val === null || val === undefined) return '';
+    if (typeof val === 'number') return val.toFixed(decimals);
+    return val;
+}
+
+function mostrarEstadisticas(data) {
+    const panel = document.getElementById('panelStats');
+    const grid = document.getElementById('statsGrid');
+
+    grid.innerHTML = `
+        <div class="stat-box">
+            <div class="stat-label">Prom. espera en cola — Estándar</div>
+            <div class="stat-value">${fmt(data.promedioEsperaEstandar)} min</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Prom. espera en cola — A Medida</div>
+            <div class="stat-value">${fmt(data.promedioEsperaMedida)} min</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">% Bloqueo Carpintero 1</div>
+            <div class="stat-value">${fmt(data.porcentajeBloqueoCarpintero1)} %</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">% Bloqueo Carpintero 2</div>
+            <div class="stat-value">${fmt(data.porcentajeBloqueoCarpintero2)} %</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Muebles en sistema al finalizar</div>
+            <div class="stat-value">${data.mueblesEnSistemaAlFinal}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Total iteraciones generadas</div>
+            <div class="stat-value">${data.totalIteraciones}</div>
+        </div>
+    `;
+    panel.style.display = 'block';
+}
+
+function construirTabla(filas, mostrarMuebles) {
+    if (!filas || filas.length === 0) return '<p>Sin filas para mostrar.</p>';
+
+    // Calcular cuántos muebles como máximo hay en cualquier fila
+    let maxMuebles = 0;
+    if (mostrarMuebles) {
+        filas.forEach(f => {
+            if (f.mueblesVivos && f.mueblesVivos.length > maxMuebles) {
+                maxMuebles = f.mueblesVivos.length;
+            }
+        });
+    }
+
+    // Construir encabezados de grupo
+    let thGrupo = '<tr class="fila-grupo">';
+    // Base
+    thGrupo += '<th colspan="4">Base</th>';
+    // Llegada Estándar
+    thGrupo += '<th colspan="3">Llegada Estándar</th>';
+    // Llegada A Medida
+    thGrupo += '<th colspan="3">Llegada A Medida</th>';
+    // Carpintero 1
+    thGrupo += '<th colspan="7">Carpintero 1</th>';
+    // Carpintero 2
+    thGrupo += '<th colspan="7">Carpintero 2</th>';
+    // Colas
+    thGrupo += '<th colspan="2">Colas</th>';
+    // Ayudante
+    thGrupo += '<th colspan="4">Ayudante Barniz</th>';
+    // Estadísticas
+    thGrupo += '<th colspan="9">Estadísticas</th>';
+    // Muebles vivos
+    if (mostrarMuebles && maxMuebles > 0) {
+        for (let i = 1; i <= maxMuebles; i++) {
+            thGrupo += `<th colspan="4">Mueble ${i}</th>`;
+        }
+    }
+    thGrupo += '</tr>';
+
+    // Encabezados de columna
+    let thCol = '<tr class="fila-col">';
+    // Base
+    thCol += '<th class="col-base">Evento</th>';
+    thCol += '<th class="col-base">Reloj</th>';
+    thCol += '<th class="col-base">ID Mueble</th>';
+    thCol += '<th class="col-base">Próx. ID</th>';
+    // Llegada Estándar
+    thCol += '<th class="col-est">RND</th>';
+    thCol += '<th class="col-est">T Entre</th>';
+    thCol += '<th class="col-est">Próx Llegada</th>';
+    // Llegada A Medida
+    thCol += '<th class="col-med">RND</th>';
+    thCol += '<th class="col-med">T Entre</th>';
+    thCol += '<th class="col-med">Próx Llegada</th>';
+    // Carpintero 1
+    thCol += '<th class="col-c1">Estado</th>';
+    thCol += '<th class="col-c1">Mueble</th>';
+    thCol += '<th class="col-c1">RND Fab</th>';
+    thCol += '<th class="col-c1">T Fab</th>';
+    thCol += '<th class="col-c1">Fin Fab</th>';
+    thCol += '<th class="col-c1">Ini Bloq</th>';
+    thCol += '<th class="col-c1">Fin Bloq</th>';
+    // Carpintero 2
+    thCol += '<th class="col-c2">Estado</th>';
+    thCol += '<th class="col-c2">Mueble</th>';
+    thCol += '<th class="col-c2">RND Fab</th>';
+    thCol += '<th class="col-c2">T Fab</th>';
+    thCol += '<th class="col-c2">Fin Fab</th>';
+    thCol += '<th class="col-c2">Ini Bloq</th>';
+    thCol += '<th class="col-c2">Fin Bloq</th>';
+    // Colas
+    thCol += '<th class="col-cola">Cola EST</th>';
+    thCol += '<th class="col-cola">Cola MED</th>';
+    // Ayudante
+    thCol += '<th class="col-ayud">Estado</th>';
+    thCol += '<th class="col-ayud">RND</th>';
+    thCol += '<th class="col-ayud">T Barn</th>';
+    thCol += '<th class="col-ayud">Fin Barn</th>';
+    // Estadísticas
+    thCol += '<th class="col-stats">Cnt EST</th>';
+    thCol += '<th class="col-stats">Esp EST</th>';
+    thCol += '<th class="col-stats">Acum Esp EST</th>';
+    thCol += '<th class="col-stats">Cnt MED</th>';
+    thCol += '<th class="col-stats">Esp MED</th>';
+    thCol += '<th class="col-stats">Acum Esp MED</th>';
+    thCol += '<th class="col-stats">Bloq Act</th>';
+    thCol += '<th class="col-stats">Acum Bloq</th>';
+    thCol += '<th class="col-stats">En Sistema</th>';
+    // Muebles vivos
+    if (mostrarMuebles && maxMuebles > 0) {
+        for (let i = 0; i < maxMuebles; i++) {
+            thCol += '<th class="col-mueble sep-mueble">ID</th>';
+            thCol += '<th class="col-mueble">Tipo</th>';
+            thCol += '<th class="col-mueble">Estado</th>';
+            thCol += '<th class="col-mueble">T Llegada</th>';
+        }
+    }
+    thCol += '</tr>';
+
+    // Filas de datos
+    let tbody = '';
+    filas.forEach(f => {
+        const esUltima = f.evento === 'fin jornada';
+        tbody += `<tr class="${esUltima ? 'ultima-fila' : ''}">`;
+        // Base
+        tbody += `<td class="col-base">${f.evento || ''}</td>`;
+        tbody += `<td class="col-base">${fmt(f.reloj)}</td>`;
+        tbody += `<td class="col-base">${f.idMueble !== null && f.idMueble !== undefined ? f.idMueble : ''}</td>`;
+        tbody += `<td class="col-base">${f.idProximoMueble !== null && f.idProximoMueble !== undefined ? f.idProximoMueble : ''}</td>`;
+        // Llegada Estándar
+        tbody += `<td class="col-est">${fmt(f.rndEstandar)}</td>`;
+        tbody += `<td class="col-est">${fmt(f.tiempoEntreEstandar)}</td>`;
+        tbody += `<td class="col-est">${fmt(f.proximaLlegadaEstandar)}</td>`;
+        // Llegada A Medida
+        tbody += `<td class="col-med">${fmt(f.rndMedida)}</td>`;
+        tbody += `<td class="col-med">${fmt(f.tiempoEntreMedida)}</td>`;
+        tbody += `<td class="col-med">${fmt(f.proximaLlegadaMedida)}</td>`;
+        // Carpintero 1
+        tbody += `<td class="col-c1">${f.estadoCarpintero1 || ''}</td>`;
+        tbody += `<td class="col-c1">${f.muebleCarpintero1 !== null && f.muebleCarpintero1 !== undefined ? f.muebleCarpintero1 : ''}</td>`;
+        tbody += `<td class="col-c1">${fmt(f.rndFabCarpintero1)}</td>`;
+        tbody += `<td class="col-c1">${fmt(f.tiempoFabCarpintero1)}</td>`;
+        tbody += `<td class="col-c1">${fmt(f.finFabCarpintero1)}</td>`;
+        tbody += `<td class="col-c1">${fmt(f.inicioBloqueoC1)}</td>`;
+        tbody += `<td class="col-c1">${fmt(f.finBloqueoC1)}</td>`;
+        // Carpintero 2
+        tbody += `<td class="col-c2">${f.estadoCarpintero2 || ''}</td>`;
+        tbody += `<td class="col-c2">${f.muebleCarpintero2 !== null && f.muebleCarpintero2 !== undefined ? f.muebleCarpintero2 : ''}</td>`;
+        tbody += `<td class="col-c2">${fmt(f.rndFabCarpintero2)}</td>`;
+        tbody += `<td class="col-c2">${fmt(f.tiempoFabCarpintero2)}</td>`;
+        tbody += `<td class="col-c2">${fmt(f.finFabCarpintero2)}</td>`;
+        tbody += `<td class="col-c2">${fmt(f.inicioBloqueoC2)}</td>`;
+        tbody += `<td class="col-c2">${fmt(f.finBloqueoC2)}</td>`;
+        // Colas
+        tbody += `<td class="col-cola">${f.colaEstandarCantidad}</td>`;
+        tbody += `<td class="col-cola">${f.colaMedidaCantidad}</td>`;
+        // Ayudante
+        tbody += `<td class="col-ayud">${f.estadoAyudante || ''}</td>`;
+        tbody += `<td class="col-ayud">${fmt(f.rndBarnizado)}</td>`;
+        tbody += `<td class="col-ayud">${fmt(f.tiempoBarnizado)}</td>`;
+        tbody += `<td class="col-ayud">${fmt(f.finBarnizado)}</td>`;
+        // Estadísticas
+        tbody += `<td class="col-stats">${f.contadorMueblesEstandar}</td>`;
+        tbody += `<td class="col-stats">${fmt(f.tiempoEsperaEstandarActual)}</td>`;
+        tbody += `<td class="col-stats">${fmt(f.acumEsperaEstandar)}</td>`;
+        tbody += `<td class="col-stats">${f.contadorMueblesMedida}</td>`;
+        tbody += `<td class="col-stats">${fmt(f.tiempoEsperaMedidaActual)}</td>`;
+        tbody += `<td class="col-stats">${fmt(f.acumEsperaMedida)}</td>`;
+        tbody += `<td class="col-stats">${fmt(f.tiempoBloqueoActual)}</td>`;
+        tbody += `<td class="col-stats">${fmt(f.acumTiempoBloqueo)}</td>`;
+        tbody += `<td class="col-stats">${f.mueblesEnSistemaAlFinal > 0 ? f.mueblesEnSistemaAlFinal : ''}</td>`;
+        // Muebles vivos
+        if (mostrarMuebles && maxMuebles > 0) {
+            const muebles = f.mueblesVivos || [];
+            for (let i = 0; i < maxMuebles; i++) {
+                if (i < muebles.length) {
+                    const m = muebles[i];
+                    tbody += `<td class="col-mueble sep-mueble">${m.id}</td>`;
+                    tbody += `<td class="col-mueble">${m.tipo}</td>`;
+                    tbody += `<td class="col-mueble">${m.estado}</td>`;
+                    tbody += `<td class="col-mueble">${fmt(m.tiempoLlegada)}</td>`;
+                } else {
+                    tbody += `<td class="col-mueble sep-mueble"></td>`;
+                    tbody += `<td class="col-mueble"></td>`;
+                    tbody += `<td class="col-mueble"></td>`;
+                    tbody += `<td class="col-mueble"></td>`;
+                }
+            }
+        }
+        tbody += '</tr>';
+    });
+
+    return `<thead>${thGrupo}${thCol}</thead><tbody>${tbody}</tbody>`;
+}
+
+function mostrarGrilla(data) {
+    const panel = document.getElementById('panelGrilla');
+    const tabla = document.getElementById('tablaVector');
+    const info = document.getElementById('infoIteraciones');
+
+    const filas = data.filasAMostrar || [];
+    info.textContent = `Mostrando ${filas.length} iteraciones desde el minuto ${document.getElementById('horaDesde').value}. Total generadas: ${data.totalIteraciones}.`;
+
+    tabla.innerHTML = construirTabla(filas, true);
+    panel.style.display = 'block';
+}
+
+function mostrarUltimaFila(data) {
+    const panel = document.getElementById('panelUltima');
+    const tabla = document.getElementById('tablaUltima');
+    const spanTiempo = document.getElementById('tiempoFinal');
+
+    if (!data.ultimaFila) return;
+
+    spanTiempo.textContent = fmt(data.ultimaFila.reloj);
+    // La ultima fila no tiene muebles vivos
+    tabla.innerHTML = construirTabla([data.ultimaFila], false);
+    panel.style.display = 'block';
+}
+
+function mostrarError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+</script>
+</body>
+</html>
