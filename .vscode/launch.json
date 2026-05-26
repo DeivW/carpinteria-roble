@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-CarpinteriaApplication<carpinteria-roble>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.carpinteria.CarpinteriaApplication",
+            "projectName": "carpinteria-roble",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
