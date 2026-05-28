@@ -10,6 +10,7 @@ import java.util.ArrayList;
 public class FilaVectorEstado {
 
     // PRICIPAL
+    private int iteracion;
     private String evento;
     private double reloj;
     private Integer idMueble;
@@ -91,6 +92,14 @@ public class FilaVectorEstado {
         public String getTipo() { return tipo; }
         public String getEstado() { return estado; }
         public double getTiempoLlegada() { return tiempoLlegada; }
+    }
+
+    public int getIteracion() {
+        return iteracion;
+    }
+
+    public void setIteracion(int num) {
+        this.iteracion = num;
     }
 
     // -------------------------------------------------------

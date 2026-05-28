@@ -340,7 +340,7 @@ function construirTabla(filas, mostrarMuebles) {
 
     // --- ENCABEZADOS DE GRUPO (Fila 1 del Thead) ---
     let thGrupo = '<tr class="fila-grupo">';
-    thGrupo += '<th colspan="4">Base</th>';
+    thGrupo += '<th colspan="5">Base</th>';
     thGrupo += '<th colspan="3">Llegada Estándar</th>';
     thGrupo += '<th colspan="3">Llegada A Medida</th>';
     thGrupo += '<th colspan="7">Carpintero 1</th>';
@@ -359,6 +359,7 @@ function construirTabla(filas, mostrarMuebles) {
 
     // --- ENCABEZADOS DE COLUMNA (Fila 2 del Thead) ---
     let thCol = '<tr class="fila-col">';
+    thCol += '<th class="col-base">Iteración</th>';
     thCol += '<th class="col-base">Evento</th>';
     thCol += '<th class="col-base">Reloj</th>';
     thCol += '<th class="col-base">ID Mueble</th>';
@@ -415,7 +416,7 @@ function construirTabla(filas, mostrarMuebles) {
     filas.forEach(f => {
         const esUltima = f.evento === 'fin jornada';
         tbody += `<tr class="${esUltima ? 'ultima-fila' : ''}">`;
-        
+        tbody += `<td class="col-base">${f.iteracion || ''}</td>`;
         tbody += `<td class="col-base">${f.evento || ''}</td>`;
         tbody += `<td class="col-base">${fmt(f.reloj)}</td>`;
         tbody += `<td class="col-base">${f.idMueble !== null && f.idMueble !== undefined ? f.idMueble : ''}</td>`;
