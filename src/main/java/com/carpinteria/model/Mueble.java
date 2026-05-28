@@ -18,6 +18,7 @@ public class Mueble {
     private double tiempoLlegada;
     private double tiempoInicioAtencion; // cuando un carpintero lo toma
     private double tiempoEsperaEnCola;   // tiempoInicioAtencion - tiempoLlegada
+    private int jornadaIngreso;
 
     public Mueble(int id, Tipo tipo, double tiempoLlegada) {
         this.id = id;
@@ -32,6 +33,15 @@ public class Mueble {
     public int getId() { return id; }
     public Tipo getTipo() { return tipo; }
     public Estado getEstado() { return estado; }
+
+    public int getJornadaIngreso() {
+        return jornadaIngreso;
+    }
+
+    public void setJornadaIngreso(int jornadaIngreso) {
+        this.jornadaIngreso = jornadaIngreso;
+    }
+
     public void setEstado(Estado estado) { this.estado = estado; }
     public double getTiempoLlegada() { return tiempoLlegada; }
     public double getTiempoInicioAtencion() { return tiempoInicioAtencion; }

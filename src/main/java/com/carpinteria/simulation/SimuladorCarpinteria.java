@@ -231,6 +231,7 @@ public class SimuladorCarpinteria {
             case "llegada_estandar": {
                 fila.setEvento("llegada mueble estandar");
                 Mueble m = new Mueble(proximoIdMueble, Mueble.Tipo.ESTANDAR, reloj);
+                m.setJornadaIngreso(jornada);
                 fila.setIdMueble(proximoIdMueble);
                 mueblesVivos.put(proximoIdMueble, m);
                 contadorEstandar++;
@@ -259,6 +260,7 @@ public class SimuladorCarpinteria {
             case "llegada_medida": {
                 fila.setEvento("llegada mueble a medida");
                 Mueble m = new Mueble(proximoIdMueble, Mueble.Tipo.A_MEDIDA, reloj);
+                m.setJornadaIngreso(jornada);
                 fila.setIdMueble(proximoIdMueble);
                 mueblesVivos.put(proximoIdMueble, m);
                 contadorMedida++;
@@ -433,7 +435,7 @@ public class SimuladorCarpinteria {
             acumBloqueoC2 += extra;
         }
         jornada++;
-        inicioSiguienteJornada = reloj + JORNADA;
+        inicioSiguienteJornada = reloj + (JORNADA*2);
 /*
         if (carpintero1.getEstado() == Carpintero.Estado.OCUPADO) {
             double resto = carpintero1.getRelojFinFabricacion() - reloj;
@@ -461,6 +463,7 @@ public class SimuladorCarpinteria {
 
         copiarEstadoServidores(fila);
         copiarEstadisticasBloqueo(fila, 0, enSistema);
+        fila.setIdMueble(((int) inicioSiguienteJornada));
         fila.setMueblesVivos(new ArrayList<>());
         return fila;
     }
@@ -483,12 +486,21 @@ public class SimuladorCarpinteria {
             double tFab;
             if (siguiente.getTipo() == Mueble.Tipo.ESTANDAR) {
                 tFab = generarUniforme(60, 100, rndFab);
-                esperaEstandarActual = siguiente.getTiempoEsperaEnCola();
-                acumEsperaEstandar += esperaEstandarActual;
+                if(siguiente.getJornadaIngreso() < jornada){
+                    esperaEstandarActual = siguiente.getTiempoEsperaEnCola() - (960*(jornada-siguiente.getJornadaIngreso()));
+                    acumEsperaEstandar += esperaEstandarActual;
+                }else{
+                    esperaEstandarActual = siguiente.getTiempoEsperaEnCola();
+                    acumEsperaEstandar += esperaEstandarActual;}
             } else {
                 tFab = generarUniforme(120, 240, rndFab);
-                esperaMedidaActual = siguiente.getTiempoEsperaEnCola();
-                acumEsperaMedida += esperaMedidaActual;
+                if(siguiente.getJornadaIngreso() < jornada){
+                    esperaMedidaActual = siguiente.getTiempoEsperaEnCola() - (960*(jornada-siguiente.getJornadaIngreso()));
+                    acumEsperaMedida += esperaMedidaActual;
+                }else{
+                    esperaMedidaActual = siguiente.getTiempoEsperaEnCola();
+                    acumEsperaMedida += esperaMedidaActual;}
+
             }
             c.iniciarFabricacion(siguiente, rndFab, tFab, reloj);
             copiarEstadisticasEspera(fila, esperaEstandarActual, esperaMedidaActual);
