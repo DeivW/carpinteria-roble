@@ -103,9 +103,9 @@
 
         .tabla-wrapper {
             overflow-x: auto;
+
             border: 1px solid #ccc;
         }
-
         table {
             border-collapse: collapse;
             font-size: 0.78em;
@@ -244,277 +244,277 @@
 </div>
 
 <script>
-async function ejecutarSimulacion() {
-    const tiempoMaximo = parseFloat(document.getElementById('tiempoMaximo').value);
-    const iteracionesAMostrar = parseInt(document.getElementById('iteracionesAMostrar').value);
-    const horaDesde = parseFloat(document.getElementById('horaDesde').value);
+    async function ejecutarSimulacion() {
+        const tiempoMaximo = parseFloat(document.getElementById('tiempoMaximo').value);
+        const iteracionesAMostrar = parseInt(document.getElementById('iteracionesAMostrar').value);
+        const horaDesde = parseFloat(document.getElementById('horaDesde').value);
 
-    if (isNaN(tiempoMaximo) || tiempoMaximo <= 0) {
-        mostrarError('El tiempo máximo debe ser mayor a 0.');
-        return;
+        if (isNaN(tiempoMaximo) || tiempoMaximo <= 0) {
+            mostrarError('El tiempo máximo debe ser mayor a 0.');
+            return;
+        }
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('panelStats').style.display = 'none';
+        document.getElementById('panelGrilla').style.display = 'none';
+        document.getElementById('panelUltima').style.display = 'none';
+        document.getElementById('errorMsg').style.display = 'none';
+
+        try {
+            const resp = await fetch('/api/simular', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tiempoMaximo, iteracionesAMostrar, horaDesde })
+            });
+
+            if (!resp.ok) throw new Error('Error en el servidor');
+            const data = await resp.json();
+
+            mostrarEstadisticas(data);
+            mostrarGrilla(data);
+            mostrarUltimaFila(data);
+
+        } catch (e) {
+            mostrarError('Error al ejecutar la simulación: ' + e.message);
+        } finally {
+            document.getElementById('loading').style.display = 'none';
+        }
     }
 
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('panelStats').style.display = 'none';
-    document.getElementById('panelGrilla').style.display = 'none';
-    document.getElementById('panelUltima').style.display = 'none';
-    document.getElementById('errorMsg').style.display = 'none';
-
-    try {
-        const resp = await fetch('/api/simular', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tiempoMaximo, iteracionesAMostrar, horaDesde })
-        });
-
-        if (!resp.ok) throw new Error('Error en el servidor');
-        const data = await resp.json();
-
-        mostrarEstadisticas(data);
-        mostrarGrilla(data);
-        mostrarUltimaFila(data);
-
-    } catch (e) {
-        mostrarError('Error al ejecutar la simulación: ' + e.message);
-    } finally {
-        document.getElementById('loading').style.display = 'none';
-    }
-}
-
-function fmt(val, decimals = 2) {
-    if (val === null || val === undefined) return '';
-    if (typeof val === 'number') return val.toFixed(decimals);
-    return val;
-}
-
-function mostrarEstadisticas(data) {
-    const panel = document.getElementById('panelStats');
-    const grid = document.getElementById('statsGrid');
-
-    grid.innerHTML = `
-        <div class="stat-box">
-            <div class="stat-label">Prom. espera en cola — Estándar</div>
-            <div class="stat-value">${fmt(data.promedioEsperaEstandar)} min</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">Prom. espera en cola — A Medida</div>
-            <div class="stat-value">${fmt(data.promedioEsperaMedida)} min</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">% Bloqueo Carpintero 1</div>
-            <div class="stat-value">${fmt(data.porcentajeBloqueoCarpintero1)} %</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">% Bloqueo Carpintero 2</div>
-            <div class="stat-value">${fmt(data.porcentajeBloqueoCarpintero2)} %</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">Muebles en sistema al finalizar</div>
-            <div class="stat-value">${data.mueblesEnSistemaAlFinal}</div>
-        </div>
-        <div class="stat-box">
-            <div class="stat-label">Total iteraciones generadas</div>
-            <div class="stat-value">${data.totalIteraciones}</div>
-        </div>
-    `;
-    panel.style.display = 'block';
-}
-
-function construirTabla(filas, mostrarMuebles) {
-    if (!filas || filas.length === 0) return '<p>Sin filas para mostrar.</p>';
-
-    // 1. Identificar TODOS los IDs únicos de muebles que aparecen en estas filas
-    let idsMueblesUnicos = [];
-    if (mostrarMuebles) {
-        let setIds = new Set();
-        filas.forEach(f => {
-            if (f.mueblesVivos) {
-                f.mueblesVivos.forEach(m => setIds.add(m.id));
-            }
-        });
-        // Ordenamos numéricamente para que la grilla sea predecible de izquierda a derecha
-        idsMueblesUnicos = Array.from(setIds).sort((a, b) => a - b);
+    function fmt(val, decimals = 2) {
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'number') return val.toFixed(decimals);
+        return val;
     }
 
-    const maxMuebles = idsMueblesUnicos.length;
+    function mostrarEstadisticas(data) {
+        const panel = document.getElementById('panelStats');
+        const grid = document.getElementById('statsGrid');
 
-    // --- ENCABEZADOS DE GRUPO (Fila 1 del Thead) ---
-    let thGrupo = '<tr class="fila-grupo">';
-    thGrupo += '<th colspan="5">Base</th>';
-    thGrupo += '<th colspan="3">Llegada Estándar</th>';
-    thGrupo += '<th colspan="3">Llegada A Medida</th>';
-    thGrupo += '<th colspan="7">Carpintero 1</th>';
-    thGrupo += '<th colspan="7">Carpintero 2</th>';
-    thGrupo += '<th colspan="2">Colas</th>';
-    thGrupo += '<th colspan="4">Ayudante Barniz</th>';
-    thGrupo += '<th colspan="9">Estadísticas</th>';
-    
-    // Muebles vivos: Una sección de 4 columnas por cada ID único real
-    if (mostrarMuebles && maxMuebles > 0) {
-        idsMueblesUnicos.forEach(id => {
-            thGrupo += `<th colspan="4">Mueble ID ${id}</th>`;
-        });
+        grid.innerHTML = `
+            <div class="stat-box">
+                <div class="stat-label">Tiempo promedio de espera en cola - Muebles estándar</div>
+                <div class="stat-value">${fmt(data.promedioEsperaEstandar)} min</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Tiempo promedio de espera en cola - Muebles a medida</div>
+                <div class="stat-value">${fmt(data.promedioEsperaMedida)} min</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Porcentaje de la jornada bloqueado - Carpintero 1</div>
+                <div class="stat-value">${fmt(data.porcentajeBloqueoCarpintero1)} %</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Porcentaje de la jornada bloqueado - Carpintero 2</div>
+                <div class="stat-value">${fmt(data.porcentajeBloqueoCarpintero2)} %</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Muebles en sistema al finalizar</div>
+                <div class="stat-value">${data.mueblesEnSistemaAlFinal}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total iteraciones generadas</div>
+                <div class="stat-value">${data.totalIteraciones}</div>
+            </div>
+        `;
+        panel.style.display = 'block';
     }
-    thGrupo += '</tr>';
 
-    // --- ENCABEZADOS DE COLUMNA (Fila 2 del Thead) ---
-    let thCol = '<tr class="fila-col">';
-    thCol += '<th class="col-base">Iteración</th>';
-    thCol += '<th class="col-base">Evento</th>';
-    thCol += '<th class="col-base">Reloj</th>';
-    thCol += '<th class="col-base">ID Mueble</th>';
-    thCol += '<th class="col-base">Próx. ID</th>';
-    thCol += '<th class="col-est">RND</th>';
-    thCol += '<th class="col-est">T Entre</th>';
-    thCol += '<th class="col-est">Próx Llegada</th>';
-    thCol += '<th class="col-med">RND</th>';
-    thCol += '<th class="col-med">T Entre</th>';
-    thCol += '<th class="col-med">Próx Llegada</th>';
-    thCol += '<th class="col-c1">Estado</th>';
-    thCol += '<th class="col-c1">Mueble</th>';
-    thCol += '<th class="col-c1">RND Fab</th>';
-    thCol += '<th class="col-c1">T Fab</th>';
-    thCol += '<th class="col-c1">Fin Fab</th>';
-    thCol += '<th class="col-c1">Ini Bloq</th>';
-    thCol += '<th class="col-c1">Fin Bloq</th>';
-    thCol += '<th class="col-c2">Estado</th>';
-    thCol += '<th class="col-c2">Mueble</th>';
-    thCol += '<th class="col-c2">RND Fab</th>';
-    thCol += '<th class="col-c2">T Fab</th>';
-    thCol += '<th class="col-c2">Fin Fab</th>';
-    thCol += '<th class="col-c2">Ini Bloq</th>';
-    thCol += '<th class="col-c2">Fin Bloq</th>';
-    thCol += '<th class="col-cola">Cola EST</th>';
-    thCol += '<th class="col-cola">Cola MED</th>';
-    thCol += '<th class="col-ayud">Estado</th>';
-    thCol += '<th class="col-ayud">RND</th>';
-    thCol += '<th class="col-ayud">T Barn</th>';
-    thCol += '<th class="col-ayud">Fin Barn</th>';
-    thCol += '<th class="col-stats">Cnt EST</th>';
-    thCol += '<th class="col-stats">Esp EST</th>';
-    thCol += '<th class="col-stats">Acum Esp EST</th>';
-    thCol += '<th class="col-stats">Cnt MED</th>';
-    thCol += '<th class="col-stats">Esp MED</th>';
-    thCol += '<th class="col-stats">Acum Esp MED</th>';
-    thCol += '<th class="col-stats">Bloq Act</th>';
-    thCol += '<th class="col-stats">Acum Bloq</th>';
-    thCol += '<th class="col-stats">En Sistema</th>';
-    
-    // CORRECCIÓN CRÍTICA: Iteramos sobre la lista de IDs reales, garantizando sincronía total con thGrupo
-    if (mostrarMuebles && maxMuebles > 0) {
-        idsMueblesUnicos.forEach(() => {
-            thCol += '<th class="col-mueble sep-mueble">ID</th>';
-            thCol += '<th class="col-mueble">Tipo</th>';
-            thCol += '<th class="col-mueble">Estado</th>';
-            thCol += '<th class="col-mueble">T Llegada</th>';
-        });
-    }
-    thCol += '</tr>';
+    function construirTabla(filas, mostrarMuebles) {
+        if (!filas || filas.length === 0) return '<p>Sin filas para mostrar.</p>';
 
-    // --- FILAS DE DATOS (Tbody) ---
-    let tbody = '';
-    filas.forEach(f => {
-        const esUltima = f.evento === 'fin jornada';
-        tbody += `<tr class="${esUltima ? 'ultima-fila' : ''}">`;
-        tbody += `<td class="col-base">${f.iteracion || ''}</td>`;
-        tbody += `<td class="col-base">${f.evento || ''}</td>`;
-        tbody += `<td class="col-base">${fmt(f.reloj)}</td>`;
-        tbody += `<td class="col-base">${f.idMueble !== null && f.idMueble !== undefined ? f.idMueble : ''}</td>`;
-        tbody += `<td class="col-base">${f.idProximoMueble !== null && f.idProximoMueble !== undefined ? f.idProximoMueble : ''}</td>`;
-        tbody += `<td class="col-est">${fmt(f.rndEstandar)}</td>`;
-        tbody += `<td class="col-est">${fmt(f.tiempoEntreEstandar)}</td>`;
-        tbody += `<td class="col-est">${fmt(f.proximaLlegadaEstandar)}</td>`;
-        tbody += `<td class="col-med">${fmt(f.rndMedida)}</td>`;
-        tbody += `<td class="col-med">${fmt(f.tiempoEntreMedida)}</td>`;
-        tbody += `<td class="col-med">${fmt(f.proximaLlegadaMedida)}</td>`;
-        tbody += `<td class="col-c1">${f.estadoCarpintero1 || ''}</td>`;
-        tbody += `<td class="col-c1">${f.muebleCarpintero1 !== null && f.muebleCarpintero1 !== undefined ? f.muebleCarpintero1 : ''}</td>`;
-        tbody += `<td class="col-c1">${fmt(f.rndFabCarpintero1)}</td>`;
-        tbody += `<td class="col-c1">${fmt(f.tiempoFabCarpintero1)}</td>`;
-        tbody += `<td class="col-c1">${fmt(f.finFabCarpintero1)}</td>`;
-        tbody += `<td class="col-c1">${fmt(f.inicioBloqueoC1)}</td>`;
-        tbody += `<td class="col-c1">${fmt(f.finBloqueoC1)}</td>`;
-        tbody += `<td class="col-c2">${f.estadoCarpintero2 || ''}</td>`;
-        tbody += `<td class="col-c2">${f.muebleCarpintero2 !== null && f.muebleCarpintero2 !== undefined ? f.muebleCarpintero2 : ''}</td>`;
-        tbody += `<td class="col-c2">${fmt(f.rndFabCarpintero2)}</td>`;
-        tbody += `<td class="col-c2">${fmt(f.tiempoFabCarpintero2)}</td>`;
-        tbody += `<td class="col-c2">${fmt(f.finFabCarpintero2)}</td>`;
-        tbody += `<td class="col-c2">${fmt(f.inicioBloqueoC2)}</td>`;
-        tbody += `<td class="col-c2">${fmt(f.finBloqueoC2)}</td>`;
-        tbody += `<td class="col-cola">${f.colaEstandarCantidad}</td>`;
-        tbody += `<td class="col-cola">${f.colaMedidaCantidad}</td>`;
-        tbody += `<td class="col-ayud">${f.estadoAyudante || ''}</td>`;
-        tbody += `<td class="col-ayud">${fmt(f.rndBarnizado)}</td>`;
-        tbody += `<td class="col-ayud">${fmt(f.tiempoBarnizado)}</td>`;
-        tbody += `<td class="col-ayud">${fmt(f.finBarnizado)}</td>`;
-        tbody += `<td class="col-stats">${f.contadorMueblesEstandar}</td>`;
-        tbody += `<td class="col-stats">${fmt(f.tiempoEsperaEstandarActual)}</td>`;
-        tbody += `<td class="col-stats">${fmt(f.acumEsperaEstandar)}</td>`;
-        tbody += `<td class="col-stats">${f.contadorMueblesMedida}</td>`;
-        tbody += `<td class="col-stats">${fmt(f.tiempoEsperaMedidaActual)}</td>`;
-        tbody += `<td class="col-stats">${fmt(f.acumEsperaMedida)}</td>`;
-        tbody += `<td class="col-stats">${fmt(f.tiempoBloqueoActual)}</td>`;
-        tbody += `<td class="col-stats">${fmt(f.acumTiempoBloqueo)}</td>`;
-        tbody += `<td class="col-stats">${f.mueblesEnSistemaAlFinal > 0 ? f.mueblesEnSistemaAlFinal : ''}</td>`;
-
-        // Renderizado posicional exacto de los objetos temporales
-        if (mostrarMuebles && maxMuebles > 0) {
-            const mapaMueblesFila = {};
-            if (f.mueblesVivos) {
-                f.mueblesVivos.forEach(m => { mapaMueblesFila[m.id] = m; });
-            }
-
-            idsMueblesUnicos.forEach(idMuebleColumna => {
-                const m = mapaMueblesFila[idMuebleColumna];
-                if (m) {
-                    tbody += `<td class="col-mueble sep-mueble">${m.id}</td>`;
-                    tbody += `<td class="col-mueble">${m.tipo}</td>`;
-                    tbody += `<td class="col-mueble">${m.estado}</td>`;
-                    tbody += `<td class="col-mueble">${fmt(m.tiempoLlegada)}</td>`;
-                } else {
-                    tbody += `<td class="col-mueble sep-mueble"></td>`;
-                    tbody += `<td class="col-mueble"></td>`;
-                    tbody += `<td class="col-mueble"></td>`;
-                    tbody += `<td class="col-mueble"></td>`;
+        // 1. Identificar TODOS los IDs únicos de muebles que aparecen en estas filas
+        let idsMueblesUnicos = [];
+        if (mostrarMuebles) {
+            let setIds = new Set();
+            filas.forEach(f => {
+                if (f.mueblesVivos) {
+                    f.mueblesVivos.forEach(m => setIds.add(m.id));
                 }
             });
+            // Ordenamos numéricamente para que la grilla sea predecible de izquierda a derecha
+            idsMueblesUnicos = Array.from(setIds).sort((a, b) => a - b);
         }
-        tbody += '</tr>';
-    });
 
-    return `<thead>${thGrupo}${thCol}</thead><tbody>${tbody}</tbody>`;
-}
+        const maxMuebles = idsMueblesUnicos.length;
 
-function mostrarGrilla(data) {
-    const panel = document.getElementById('panelGrilla');
-    const tabla = document.getElementById('tablaVector');
-    const info = document.getElementById('infoIteraciones');
+        // --- ENCABEZADOS DE GRUPO (Fila 1 del Thead) ---
+        let thGrupo = '<tr class="fila-grupo">';
+        thGrupo += '<th colspan="5">Base</th>';
+        thGrupo += '<th colspan="3">Llegada Estándar</th>';
+        thGrupo += '<th colspan="3">Llegada A Medida</th>';
+        thGrupo += '<th colspan="7">Carpintero 1</th>';
+        thGrupo += '<th colspan="7">Carpintero 2</th>';
+        thGrupo += '<th colspan="2">Colas</th>';
+        thGrupo += '<th colspan="4">Ayudante Barniz</th>';
+        thGrupo += '<th colspan="9">Estadísticas</th>';
 
-    const filas = data.filasAMostrar || [];
-    info.textContent = `Mostrando ${filas.length} iteraciones desde el minuto ${document.getElementById('horaDesde').value}. Total generadas: ${data.totalIteraciones}.`;
+        // Muebles vivos: Una sección de 4 columnas por cada ID único real
+        if (mostrarMuebles && maxMuebles > 0) {
+            idsMueblesUnicos.forEach(id => {
+                thGrupo += `<th colspan="4">Mueble ID ${id}</th>`;
+            });
+        }
+        thGrupo += '</tr>';
 
-    tabla.innerHTML = construirTabla(filas, true);
-    panel.style.display = 'block';
-}
+        // --- ENCABEZADOS DE COLUMNA (Fila 2 del Thead) ---
+        let thCol = '<tr class="fila-col">';
+        thCol += '<th class="col-base">Iteración</th>';
+        thCol += '<th class="col-base">Evento</th>';
+        thCol += '<th class="col-base">Reloj</th>';
+        thCol += '<th class="col-base">ID Mueble</th>';
+        thCol += '<th class="col-base">Próx. ID</th>';
+        thCol += '<th class="col-est">RND</th>';
+        thCol += '<th class="col-est">T Entre</th>';
+        thCol += '<th class="col-est">Próx Llegada</th>';
+        thCol += '<th class="col-med">RND</th>';
+        thCol += '<th class="col-med">T Entre</th>';
+        thCol += '<th class="col-med">Próx Llegada</th>';
+        thCol += '<th class="col-c1">Estado</th>';
+        thCol += '<th class="col-c1">Mueble</th>';
+        thCol += '<th class="col-c1">RND Fab</th>';
+        thCol += '<th class="col-c1">T Fab</th>';
+        thCol += '<th class="col-c1">Fin Fab</th>';
+        thCol += '<th class="col-c1">Ini Bloq</th>';
+        thCol += '<th class="col-c1">Fin Bloq</th>';
+        thCol += '<th class="col-c2">Estado</th>';
+        thCol += '<th class="col-c2">Mueble</th>';
+        thCol += '<th class="col-c2">RND Fab</th>';
+        thCol += '<th class="col-c2">T Fab</th>';
+        thCol += '<th class="col-c2">Fin Fab</th>';
+        thCol += '<th class="col-c2">Ini Bloq</th>';
+        thCol += '<th class="col-c2">Fin Bloq</th>';
+        thCol += '<th class="col-cola">Cola EST</th>';
+        thCol += '<th class="col-cola">Cola MED</th>';
+        thCol += '<th class="col-ayud">Estado</th>';
+        thCol += '<th class="col-ayud">RND</th>';
+        thCol += '<th class="col-ayud">T Barn</th>';
+        thCol += '<th class="col-ayud">Fin Barn</th>';
+        thCol += '<th class="col-stats">Cnt EST</th>';
+        thCol += '<th class="col-stats">Esp EST</th>';
+        thCol += '<th class="col-stats">Acum Esp EST</th>';
+        thCol += '<th class="col-stats">Cnt MED</th>';
+        thCol += '<th class="col-stats">Esp MED</th>';
+        thCol += '<th class="col-stats">Acum Esp MED</th>';
+        thCol += '<th class="col-stats">Bloq Act</th>';
+        thCol += '<th class="col-stats">Acum Bloq</th>';
+        thCol += '<th class="col-stats">En Sistema</th>';
 
-function mostrarUltimaFila(data) {
-    const panel = document.getElementById('panelUltima');
-    const tabla = document.getElementById('tablaUltima');
-    const spanTiempo = document.getElementById('tiempoFinal');
+        // CORRECCIÓN CRÍTICA: Iteramos sobre la lista de IDs reales, garantizando sincronía total con thGrupo
+        if (mostrarMuebles && maxMuebles > 0) {
+            idsMueblesUnicos.forEach(() => {
+                thCol += '<th class="col-mueble sep-mueble">ID</th>';
+                thCol += '<th class="col-mueble">Tipo</th>';
+                thCol += '<th class="col-mueble">Estado</th>';
+                thCol += '<th class="col-mueble">T Llegada</th>';
+            });
+        }
+        thCol += '</tr>';
 
-    if (!data.ultimaFila) return;
+        // --- FILAS DE DATOS (Tbody) ---
+        let tbody = '';
+        filas.forEach(f => {
+            const esUltima = f.evento === 'fin jornada';
+            tbody += `<tr class="${esUltima ? 'ultima-fila' : ''}">`;
+            tbody += `<td class="col-base">${f.iteracion || ''}</td>`;
+            tbody += `<td class="col-base">${f.evento || ''}</td>`;
+            tbody += `<td class="col-base">${fmt(f.reloj)}</td>`;
+            tbody += `<td class="col-base">${f.idMueble !== null && f.idMueble !== undefined ? f.idMueble : ''}</td>`;
+            tbody += `<td class="col-base">${f.idProximoMueble !== null && f.idProximoMueble !== undefined ? f.idProximoMueble : ''}</td>`;
+            tbody += `<td class="col-est">${fmt(f.rndEstandar)}</td>`;
+            tbody += `<td class="col-est">${fmt(f.tiempoEntreEstandar)}</td>`;
+            tbody += `<td class="col-est">${fmt(f.proximaLlegadaEstandar)}</td>`;
+            tbody += `<td class="col-med">${fmt(f.rndMedida)}</td>`;
+            tbody += `<td class="col-med">${fmt(f.tiempoEntreMedida)}</td>`;
+            tbody += `<td class="col-med">${fmt(f.proximaLlegadaMedida)}</td>`;
+            tbody += `<td class="col-c1">${f.estadoCarpintero1 || ''}</td>`;
+            tbody += `<td class="col-c1">${f.muebleCarpintero1 !== null && f.muebleCarpintero1 !== undefined ? f.muebleCarpintero1 : ''}</td>`;
+            tbody += `<td class="col-c1">${fmt(f.rndFabCarpintero1)}</td>`;
+            tbody += `<td class="col-c1">${fmt(f.tiempoFabCarpintero1)}</td>`;
+            tbody += `<td class="col-c1">${fmt(f.finFabCarpintero1)}</td>`;
+            tbody += `<td class="col-c1">${fmt(f.inicioBloqueoC1)}</td>`;
+            tbody += `<td class="col-c1">${fmt(f.finBloqueoC1)}</td>`;
+            tbody += `<td class="col-c2">${f.estadoCarpintero2 || ''}</td>`;
+            tbody += `<td class="col-c2">${f.muebleCarpintero2 !== null && f.muebleCarpintero2 !== undefined ? f.muebleCarpintero2 : ''}</td>`;
+            tbody += `<td class="col-c2">${fmt(f.rndFabCarpintero2)}</td>`;
+            tbody += `<td class="col-c2">${fmt(f.tiempoFabCarpintero2)}</td>`;
+            tbody += `<td class="col-c2">${fmt(f.finFabCarpintero2)}</td>`;
+            tbody += `<td class="col-c2">${fmt(f.inicioBloqueoC2)}</td>`;
+            tbody += `<td class="col-c2">${fmt(f.finBloqueoC2)}</td>`;
+            tbody += `<td class="col-cola">${f.colaEstandarCantidad}</td>`;
+            tbody += `<td class="col-cola">${f.colaMedidaCantidad}</td>`;
+            tbody += `<td class="col-ayud">${f.estadoAyudante || ''}</td>`;
+            tbody += `<td class="col-ayud">${fmt(f.rndBarnizado)}</td>`;
+            tbody += `<td class="col-ayud">${fmt(f.tiempoBarnizado)}</td>`;
+            tbody += `<td class="col-ayud">${fmt(f.finBarnizado)}</td>`;
+            tbody += `<td class="col-stats">${f.contadorMueblesEstandar}</td>`;
+            tbody += `<td class="col-stats">${fmt(f.tiempoEsperaEstandarActual)}</td>`;
+            tbody += `<td class="col-stats">${fmt(f.acumEsperaEstandar)}</td>`;
+            tbody += `<td class="col-stats">${f.contadorMueblesMedida}</td>`;
+            tbody += `<td class="col-stats">${fmt(f.tiempoEsperaMedidaActual)}</td>`;
+            tbody += `<td class="col-stats">${fmt(f.acumEsperaMedida)}</td>`;
+            tbody += `<td class="col-stats">${fmt(f.tiempoBloqueoActual)}</td>`;
+            tbody += `<td class="col-stats">${fmt(f.acumTiempoBloqueo)}</td>`;
+            tbody += `<td class="col-stats">${f.mueblesEnSistemaAlFinal > 0 ? f.mueblesEnSistemaAlFinal : ''}</td>`;
 
-    spanTiempo.textContent = fmt(data.ultimaFila.reloj);
-    // La ultima fila no tiene muebles vivos
-    tabla.innerHTML = construirTabla([data.ultimaFila], false);
-    panel.style.display = 'block';
-}
+            // Renderizado posicional exacto de los objetos temporales
+            if (mostrarMuebles && maxMuebles > 0) {
+                const mapaMueblesFila = {};
+                if (f.mueblesVivos) {
+                    f.mueblesVivos.forEach(m => { mapaMueblesFila[m.id] = m; });
+                }
 
-function mostrarError(msg) {
-    const el = document.getElementById('errorMsg');
-    el.textContent = msg;
-    el.style.display = 'block';
-}
+                idsMueblesUnicos.forEach(idMuebleColumna => {
+                    const m = mapaMueblesFila[idMuebleColumna];
+                    if (m) {
+                        tbody += `<td class="col-mueble sep-mueble">${m.id}</td>`;
+                        tbody += `<td class="col-mueble">${m.tipo}</td>`;
+                        tbody += `<td class="col-mueble">${m.estado}</td>`;
+                        tbody += `<td class="col-mueble">${fmt(m.tiempoLlegada)}</td>`;
+                    } else {
+                        tbody += `<td class="col-mueble sep-mueble"></td>`;
+                        tbody += `<td class="col-mueble"></td>`;
+                        tbody += `<td class="col-mueble"></td>`;
+                        tbody += `<td class="col-mueble"></td>`;
+                    }
+                });
+            }
+            tbody += '</tr>';
+        });
+
+        return `<thead>${thGrupo}${thCol}</thead><tbody>${tbody}</tbody>`;
+    }
+
+    function mostrarGrilla(data) {
+        const panel = document.getElementById('panelGrilla');
+        const tabla = document.getElementById('tablaVector');
+        const info = document.getElementById('infoIteraciones');
+
+        const filas = data.filasAMostrar || [];
+        info.textContent = `Mostrando ${filas.length} iteraciones desde el minuto ${document.getElementById('horaDesde').value}. Total generadas: ${data.totalIteraciones}.`;
+
+        tabla.innerHTML = construirTabla(filas, true);
+        panel.style.display = 'block';
+    }
+
+    function mostrarUltimaFila(data) {
+        const panel = document.getElementById('panelUltima');
+        const tabla = document.getElementById('tablaUltima');
+        const spanTiempo = document.getElementById('tiempoFinal');
+
+        if (!data.ultimaFila) return;
+
+        spanTiempo.textContent = fmt(data.ultimaFila.reloj);
+        // La ultima fila no tiene muebles vivos
+        tabla.innerHTML = construirTabla([data.ultimaFila], false);
+        panel.style.display = 'block';
+    }
+
+    function mostrarError(msg) {
+        const el = document.getElementById('errorMsg');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
 </script>
 </body>
 </html>

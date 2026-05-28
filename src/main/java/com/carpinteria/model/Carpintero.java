@@ -40,6 +40,10 @@ public class Carpintero {
         this.finBloqueo = 0;
     }
 
+    public void setInicioBloqueo(double inicioBloqueo) {
+        this.inicioBloqueo = inicioBloqueo;
+    }
+
     public void desbloquear(double relojActual) {
         this.finBloqueo = relojActual;
         this.acumTiempoBloqueo += (relojActual - this.inicioBloqueo);
@@ -71,6 +75,10 @@ public class Carpintero {
     public double getInicioBloqueo() { return inicioBloqueo; }
     public double getFinBloqueo() { return finBloqueo; }
     public double getAcumTiempoBloqueo() { return acumTiempoBloqueo; }
+
+    public void setFinBloqueo(double finBloqueo) {
+        this.finBloqueo = finBloqueo;
+    }
 
     public String getEstadoStr() {
         switch (estado) {

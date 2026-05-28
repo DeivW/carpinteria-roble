@@ -34,6 +34,10 @@ public class Ayudante {
         this.relojFinBarnizado = 0;
     }
 
+    public void setRelojFinBarnizado(double relojFinBarnizado) {
+        this.relojFinBarnizado = relojFinBarnizado;
+    }
+
     // Getters
     public Estado getEstado() { return estado; }
     public Mueble getMuebleActual() { return muebleActual; }
