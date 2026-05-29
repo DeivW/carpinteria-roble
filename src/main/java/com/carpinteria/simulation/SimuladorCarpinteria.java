@@ -98,7 +98,7 @@ public class SimuladorCarpinteria {
         // Generar fila inicial (reloj = 0)
         FilaVectorEstado filaInicial = generarFilaInicial();
         todasLasFilas.add(filaInicial);
-        if(filasAMostrar.size()< iteracionesAMostrar && filaInicial.getReloj() > horaDesde){
+        if(filasAMostrar.size()< iteracionesAMostrar && filaInicial.getReloj() >= horaDesde){
             filasAMostrar.add(filaInicial);
         }
         int iteraciones = 1;
@@ -275,6 +275,7 @@ public class SimuladorCarpinteria {
                 proximoIdMueble++;
                 fila.setIdProximoMueble(proximoIdMueble);
 
+                // PROXIMA LLEGADA
                 double rnd = Math.random();
                 double tiempo = generarExponencial(mediaEst, rnd);
                 proximaLlegadaEstandar = reloj + tiempo;
@@ -282,6 +283,7 @@ public class SimuladorCarpinteria {
                 fila.setTiempoEntreEstandar(tiempo);
                 fila.setProximaLlegadaEstandar(proximaLlegadaEstandar);
                 fila.setProximaLlegadaMedida(proximaLlegadaMedida);
+
                 Carpintero libre = getCarpinteroLibre();
                 if (libre != null) {
                     m.setEstado(Mueble.Estado.SIENDO_FABRICADO);
@@ -304,6 +306,7 @@ public class SimuladorCarpinteria {
                 proximoIdMueble++;
                 fila.setIdProximoMueble(proximoIdMueble);
 
+                // PROXIMA LLEGADA
                 double rnd = Math.random();
                 double tiempo = generarExponencial(mediaMed, rnd);
                 proximaLlegadaMedida = reloj + tiempo;
@@ -523,6 +526,8 @@ public class SimuladorCarpinteria {
             double tFab;
             if (siguiente.getTipo() == Mueble.Tipo.ESTANDAR) {
                 tFab = generarUniforme(fabEstDesde, fabEstHasta, rndFab);
+
+                // Manejar en que jornada llego para el tiempo de espera
                 if(siguiente.getJornadaIngreso() < jornada){
                     esperaEstandarActual = siguiente.getTiempoEsperaEnCola() - (960*(jornada-siguiente.getJornadaIngreso()));
                     acumEsperaEstandar += esperaEstandarActual;

@@ -72,9 +72,9 @@ public class FilaVectorEstado {
         this.mueblesVivos = new ArrayList<>();
     }
 
-    // -------------------------------------------------------
+
     // Clase interna para snapshot de un mueble vivo
-    // -------------------------------------------------------
+
     public static class MuebleSnapshot {
         private int id;
         private String tipo;
