@@ -205,7 +205,7 @@ public class SimuladorCarpinteria {
         fila.setProximaLlegadaMedida(proximaLlegadaMedida);
 
         copiarEstadoServidores(fila);
-        copiarEstadisticasBloqueo(fila, 0, 0);
+        copiarEstadisticasBloqueo(fila, 0,0, 0);
         copiarEstadisticasEspera(fila, 0, 0);
         copiarMueblesVivos(fila);
         return fila;
@@ -260,7 +260,8 @@ public class SimuladorCarpinteria {
         fila.setReloj(reloj);
         numIteracion++;
         fila.setIteracion(numIteracion);
-        double bloqueoActual = 0;
+        double bloqueoActualC1 = 0;
+        double bloqueoActualC2 = 0;
         double esperaEstandarActual = 0;
         double esperaMedidaActual = 0;
 
@@ -409,15 +410,15 @@ public class SimuladorCarpinteria {
                     if (carpintero1.getEstado() == Carpintero.Estado.BLOQUEADO
                             && carpintero1.getMuebleActual() != null
                             && carpintero1.getMuebleActual().getId() == siguiente.getId()) {
-                        bloqueoActual = reloj - carpintero1.getInicioBloqueo();
-                        acumBloqueoC1 += bloqueoActual;
+                        bloqueoActualC1 = reloj - carpintero1.getInicioBloqueo();
+                        acumBloqueoC1 += bloqueoActualC1;
                         carpintero1.desbloquear(reloj);
                         asignarSiguienteACarpintero(carpintero1, fila);
                     } else if (carpintero2.getEstado() == Carpintero.Estado.BLOQUEADO
                             && carpintero2.getMuebleActual() != null
                             && carpintero2.getMuebleActual().getId() == siguiente.getId()) {
-                        bloqueoActual = reloj - carpintero2.getInicioBloqueo();
-                        acumBloqueoC2 += bloqueoActual;
+                        bloqueoActualC2 = reloj - carpintero2.getInicioBloqueo();
+                        acumBloqueoC2 += bloqueoActualC2;
                         carpintero2.desbloquear(reloj);
                         asignarSiguienteACarpintero(carpintero2, fila);
                     }
@@ -449,7 +450,7 @@ public class SimuladorCarpinteria {
 
         copiarEstadoServidores(fila);
         // CORRECCIÓN: Ahora pasa de manera segmentada cada métrica de espera a la fila
-        copiarEstadisticasBloqueo(fila, bloqueoActual, 0);
+        copiarEstadisticasBloqueo(fila, bloqueoActualC1, bloqueoActualC2, mueblesVivos.size());
         copiarMueblesVivos(fila);
         return fila;
     }
@@ -467,12 +468,12 @@ public class SimuladorCarpinteria {
         if (carpintero1.getEstado() == Carpintero.Estado.BLOQUEADO) {
             double extra = reloj - carpintero1.getInicioBloqueo();
             carpintero1.setInicioBloqueo(carpintero1.getInicioBloqueo() + (DIA-JORNADA));
-            acumBloqueoC1 += extra;
+            //acumBloqueoC1 += extra;
         }
         if (carpintero2.getEstado() == Carpintero.Estado.BLOQUEADO) {
             double extra = reloj - carpintero2.getInicioBloqueo();
             carpintero2.setInicioBloqueo(carpintero2.getInicioBloqueo() + (DIA-JORNADA));
-            acumBloqueoC2 += extra;
+            //acumBloqueoC2 += extra;
         }
         jornada++;
         inicioSiguienteJornada = reloj + (JORNADA*2);
@@ -502,7 +503,7 @@ public class SimuladorCarpinteria {
         proximaLlegadaMedida += DIA - JORNADA;
 
         copiarEstadoServidores(fila);
-        copiarEstadisticasBloqueo(fila, 0, enSistema);
+        copiarEstadisticasBloqueo(fila, 0,0, enSistema);
         fila.setIdMueble(((int) inicioSiguienteJornada));
         fila.setMueblesVivos(new ArrayList<>());
         return fila;
@@ -608,9 +609,12 @@ public class SimuladorCarpinteria {
 
 
     }
-    private void copiarEstadisticasBloqueo(FilaVectorEstado fila, double bloqueoActual, int mueblesAlFinal) {
-        fila.setTiempoBloqueoActual(bloqueoActual);
+    private void copiarEstadisticasBloqueo(FilaVectorEstado fila, double bloqueoActualC1, double bloqueoActualC2, int mueblesAlFinal) {
+        fila.setTiempoBloqueoActualC1(bloqueoActualC1);
+        fila.setTiempoBloqueoActualC2(bloqueoActualC2);
         fila.setAcumTiempoBloqueo(acumBloqueoC1 + acumBloqueoC2);
+        fila.setAcumTiempoBloqueoC1(acumBloqueoC1);
+        fila.setAcumTiempoBloqueoC2(acumBloqueoC2);
         fila.setMueblesEnSistemaAlFinal(mueblesAlFinal);
     }
 

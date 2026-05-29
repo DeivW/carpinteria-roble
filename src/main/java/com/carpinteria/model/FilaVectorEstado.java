@@ -52,6 +52,15 @@ public class FilaVectorEstado {
     private String estadoAyudante;
     private Double rndBarnizado;
     private Double tiempoBarnizado;
+
+    public double getAcumTiempoBloqueo() {
+        return AcumTiempoBloqueo;
+    }
+
+    public void setAcumTiempoBloqueo(double acumTiempoBloqueo) {
+        AcumTiempoBloqueo = acumTiempoBloqueo;
+    }
+
     private Double finBarnizado;
 
     // --- ESTADISTICAS ---
@@ -61,8 +70,28 @@ public class FilaVectorEstado {
     private int contadorMueblesMedida;
     private double tiempoEsperaMedidaActual;     // espera del mueble actual
     private double acumEsperaMedida;
-    private double tiempoBloqueoActual;          // bloqueo en este evento
-    private double acumTiempoBloqueo;            // acum total de ambos carpinteros
+    private double tiempoBloqueoActualC1; // bloqueo del carpintero 1 en este evento
+    private double tiempoBloqueoActualC2; // bloqueo del carpintero 2 en este evento
+    private double AcumTiempoBloqueo;
+
+    public double getTiempoBloqueoActualC1() {
+        return tiempoBloqueoActualC1;
+    }
+
+    public void setTiempoBloqueoActualC1(double tiempoBloqueoActualC1) {
+        this.tiempoBloqueoActualC1 = tiempoBloqueoActualC1;
+    }
+
+    public double getTiempoBloqueoActualC2() {
+        return tiempoBloqueoActualC2;
+    }
+
+    public void setTiempoBloqueoActualC2(double tiempoBloqueoActualC2) {
+        this.tiempoBloqueoActualC2 = tiempoBloqueoActualC2;
+    }
+
+    private double acumTiempoBloqueoC1;            // acum total de carpintero 1
+    private double acumTiempoBloqueoC2;         // acum total de carpintero 2
     private int mueblesEnSistemaAlFinal;         // solo se usa en la ultima fila
 
     // --- OBJETOS TEMPORALES (muebles vivos) ---
@@ -213,11 +242,19 @@ public class FilaVectorEstado {
     public double getAcumEsperaMedida() { return acumEsperaMedida; }
     public void setAcumEsperaMedida(double acumEsperaMedida) { this.acumEsperaMedida = acumEsperaMedida; }
 
-    public double getTiempoBloqueoActual() { return tiempoBloqueoActual; }
-    public void setTiempoBloqueoActual(double tiempoBloqueoActual) { this.tiempoBloqueoActual = tiempoBloqueoActual; }
+    //public double getTiempoBloqueoActual() { return tiempoBloqueoActual; }
+    //public void setTiempoBloqueoActual(double tiempoBloqueoActual) { this.tiempoBloqueoActual = tiempoBloqueoActual; }
 
-    public double getAcumTiempoBloqueo() { return acumTiempoBloqueo; }
-    public void setAcumTiempoBloqueo(double acumTiempoBloqueo) { this.acumTiempoBloqueo = acumTiempoBloqueo; }
+    public double getAcumTiempoBloqueoC1() { return acumTiempoBloqueoC1; }
+    public void setAcumTiempoBloqueoC1(double acumTiempoBloqueo) { this.acumTiempoBloqueoC1 = acumTiempoBloqueo; }
+
+    public double getAcumTiempoBloqueoC2() {
+        return acumTiempoBloqueoC2;
+    }
+
+    public void setAcumTiempoBloqueoC2(double acumTiempoBloqueoC2) {
+        this.acumTiempoBloqueoC2 = acumTiempoBloqueoC2;
+    }
 
     public int getMueblesEnSistemaAlFinal() { return mueblesEnSistemaAlFinal; }
     public void setMueblesEnSistemaAlFinal(int mueblesEnSistemaAlFinal) { this.mueblesEnSistemaAlFinal = mueblesEnSistemaAlFinal; }

@@ -383,7 +383,7 @@
         thGrupo += '<th colspan="7">Carpintero 2</th>';
         thGrupo += '<th colspan="2">Colas</th>';
         thGrupo += '<th colspan="4">Ayudante Barniz</th>';
-        thGrupo += '<th colspan="9">Estadísticas</th>';
+        thGrupo += '<th colspan="12">Estadísticas</th>';
 
         // Muebles vivos: Una sección de 4 columnas por cada ID único real
         if (mostrarMuebles && maxMuebles > 0) {
@@ -432,7 +432,10 @@
         thCol += '<th class="col-stats">Cnt MED</th>';
         thCol += '<th class="col-stats">Esp MED</th>';
         thCol += '<th class="col-stats">Acum Esp MED</th>';
-        thCol += '<th class="col-stats">Bloq Act</th>';
+        thCol += '<th class="col-stats">Bloqueo act. C1</th>';
+        thCol += '<th class="col-stats">Bloqueo acum. C1</th>';
+        thCol += '<th class="col-stats">Bloqueo act. C2</th>';
+        thCol += '<th class="col-stats">Bloqueo acum. C2</th>';
         thCol += '<th class="col-stats">Acum Bloq</th>';
         thCol += '<th class="col-stats">En Sistema</th>';
 
@@ -489,9 +492,12 @@
             tbody += `<td class="col-stats">${f.contadorMueblesMedida}</td>`;
             tbody += `<td class="col-stats">${fmt(f.tiempoEsperaMedidaActual)}</td>`;
             tbody += `<td class="col-stats">${fmt(f.acumEsperaMedida)}</td>`;
-            tbody += `<td class="col-stats">${fmt(f.tiempoBloqueoActual)}</td>`;
+            tbody += `<td class="col-stats">${fmt(f.tiempoBloqueoActualC1)}</td>`;
+            tbody += `<td class="col-stats">${fmt(f.acumTiempoBloqueoC1)}</td>`;
+            tbody += `<td class="col-stats">${fmt(f.tiempoBloqueoActualC2)}</td>`;
+            tbody += `<td class="col-stats">${fmt(f.acumTiempoBloqueoC2)}</td>`;
             tbody += `<td class="col-stats">${fmt(f.acumTiempoBloqueo)}</td>`;
-            tbody += `<td class="col-stats">${f.mueblesEnSistemaAlFinal > 0 ? f.mueblesEnSistemaAlFinal : ''}</td>`;
+            tbody += `<td class="col-stats">${f.mueblesEnSistemaAlFinal}</td>`;
 
             // Renderizado posicional exacto de los objetos temporales
             if (mostrarMuebles && maxMuebles > 0) {
