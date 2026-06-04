@@ -105,44 +105,32 @@ public class SimuladorCarpinteria {
         boolean jornada1Terminada = false;
 
         // Bucle principal
+        // Bucle principal
         while (iteraciones < MAX_ITERACIONES) {
 
-            FilaVectorEstado anterior = null;
-            FilaVectorEstado actual = null;
-            // Determinar el próximo evento
+            // 1. Determinar el próximo evento (ahora compite también "fin_simulacion")
             String proximoEvento = determinarProximoEvento();
             if (proximoEvento == null) break;
 
-            // Avanzar el reloj
+            // 2. Avanzar el reloj al tiempo de ese evento
             double tiempoEvento = getTiempoProximoEvento(proximoEvento);
-/*
-            // Verificar fin de jornada
-            double finJornada = inicioSiguienteJornada - JORNADA; 
-            double finJornadaActual = finJornada + JORNADA;
 
-            if (!jornada1Terminada && tiempoEvento > finJornadaActual) {
-                // Procesar fin de jornada
-                FilaVectorEstado filaFin = procesarFinJornada(finJornadaActual);
-                todasLasFilas.add(filaFin);
-                iteraciones++;
-                jornada1Terminada = true;
-
-                // Si el tiempo maximo ya paso, cortar
-                if (finJornadaActual >= tiempoMaximo) break;
-            }
-*/
-            // Si superamos el tiempo maximo, cortar
-            if (tiempoEvento > tiempoMaximo) break;
-
-            // Procesar el evento
-            anterior = actual;
-            actual = procesarEvento(proximoEvento, tiempoEvento);
-            if(filasAMostrar.size() < iteracionesAMostrar+1 && actual.getReloj() > horaDesde){
+            // 3. Procesar el evento (el switch se encarga de delegar la lógica)
+            FilaVectorEstado actual = procesarEvento(proximoEvento, tiempoEvento);
+            
+            // 4. Filtrar y guardar la fila en la lista para el Front si corresponde
+            if (filasAMostrar.size() < iteracionesAMostrar + 1 && actual.getReloj() >= horaDesde) {
                 filasAMostrar.add(actual);
             }
-            //todasLasFilas.add(actual);
+            
             iteraciones++;
             ultimaFila = actual;
+
+            // 5. CORRECCIÓN CRÍTICA: Si el evento que se acaba de procesar fue el fin de simulación,
+            // que frene el bucle de manera limpia habiendo generado la última fila formal.
+            if ("fin_simulacion".equals(proximoEvento)) {
+                break;
+            }
         }
 
         // Construir resultado
@@ -239,6 +227,12 @@ public class SimuladorCarpinteria {
             minTiempo = finJornada;
             evento = "fin_jornada";
         }
+
+            // NUEVO: El fin de simulación compite por ser el próximo evento
+        if (tiempoMaximo < minTiempo) {
+            minTiempo = tiempoMaximo;
+            evento = "fin_simulacion";
+        }
         return evento;
     }
 
@@ -250,6 +244,7 @@ public class SimuladorCarpinteria {
             case "fin_fab_c2":       return carpintero2.getRelojFinFabricacion();
             case "fin_barniz":       return ayudante.getRelojFinBarnizado();
             case "fin_jornada":      return finJornada;
+            case "fin_simulacion":   return tiempoMaximo;
             default: return Double.MAX_VALUE;
         }
     }
@@ -430,6 +425,27 @@ public class SimuladorCarpinteria {
             case "fin_jornada": {
                 fila = procesarFinJornada(finJornada);
                 finJornada = finJornada + DIA;
+                break;
+            }
+
+            case "fin_simulacion": {
+                fila.setEvento("fin simulacion");
+                // Forzamos al reloj a situarse en el límite exacto pedido por el usuario
+                reloj = tiempoMaximo; 
+                fila.setReloj(reloj);
+                fila.setIdMueble(null);
+                
+                // En el instante final, recalculamos los bloqueos remanentes si hay carpinteros trabados
+                if (carpintero1.getEstado() == Carpintero.Estado.BLOQUEADO) {
+                    double extra = reloj - carpintero1.getInicioBloqueo();
+                    acumBloqueoC1 += extra;
+                    bloqueoActualC1 = extra;
+                }
+                if (carpintero2.getEstado() == Carpintero.Estado.BLOQUEADO) {
+                    double extra = reloj - carpintero2.getInicioBloqueo();
+                    acumBloqueoC2 += extra;
+                    bloqueoActualC2 = extra;
+                }
                 break;
             }
 
