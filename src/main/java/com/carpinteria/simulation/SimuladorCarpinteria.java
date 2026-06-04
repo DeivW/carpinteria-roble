@@ -8,8 +8,8 @@ import java.util.*;
 public class SimuladorCarpinteria {
 
     private static final int MAX_ITERACIONES = 100000;
-    private static final double JORNADA = 480.0;// 8 horas en minutos
-    private static final double DIA = 1440.0; // 24 horas
+    private static final double JORNADA = 480.0; // 8 horas en minutos
+    private static final double DIA = 1440.0;    // 24 horas cronológicas
 
     // Estados de los servidores
     private Carpintero carpintero1;
@@ -23,7 +23,7 @@ public class SimuladorCarpinteria {
     private Queue<Mueble> colaEstandar;
     private Queue<Mueble> colaMedida;
 
-    // Cola de bloqueo: muebles esperando barniz (en orden de llegada al bloqueo)
+    // Cola de bloqueo: muebles esperando barniz
     private Queue<Mueble> colaBarnizado;
 
     // Muebles vivos en el sistema (para objetos temporales)
@@ -43,22 +43,23 @@ public class SimuladorCarpinteria {
     private double acumBloqueoC1;
     private double acumBloqueoC2;
 
-    //Primera fila
+    // Primera fila
     private double primerRNDest;
     private double primerRNDmed;
     private double primerTiempoEst;
     private double primerTiempoMed;
-    // Reloj
+    
+    // Relojes de control
     private double reloj;
     private double tiempoMaximo;
     private double horaDesde;
 
-    // Para la siguiente jornada
+    // Para la gestión de jornadas discontinuas
     private double inicioSiguienteJornada;
     private double finJornada;
     private int jornada;
 
-    // PARAMETROS DE VARIABLES ALEATORIAS
+    // Parámetros configurables desde el Frontend
     private double mediaEst;
     private double mediaMed;
     private double fabEstDesde;
@@ -70,7 +71,6 @@ public class SimuladorCarpinteria {
     private int iteracionesAMostrar;
     private FilaVectorEstado ultimaFila;
 
-    // PARAMETROS: tiempoMaximo, iteracionesAMostrar, horaDesde, mediaEst, mediaMed, fabEstDesde, fabEstHasta, fabMedDesde, fabMedHasta, mediaBarn
     public ResultadoSimulacion simular(ParametrosSimulacion params) {
         tiempoMaximo = params.getTiempoMaximo();
         horaDesde = params.getHoraDesde();
@@ -82,43 +82,35 @@ public class SimuladorCarpinteria {
         fabMedHasta = params.getFabMedHasta();
         mediaBarn = params.getMediaBarn();
 
-        if(params.getIteracionesAMostrar() <= 0){
+        if (params.getIteracionesAMostrar() <= 0) {
             iteracionesAMostrar = 200;
+        } else { 
+            iteracionesAMostrar = params.getIteracionesAMostrar(); 
         }
-        else{ iteracionesAMostrar = params.getIteracionesAMostrar(); }
 
-
-        // Inicializar todo
         inicializar();
 
-        // Lista donde guardamos TODAS las filas generadas
         List<FilaVectorEstado> todasLasFilas = new ArrayList<>();
-
 
         // Generar fila inicial (reloj = 0)
         FilaVectorEstado filaInicial = generarFilaInicial();
         todasLasFilas.add(filaInicial);
-        if(filasAMostrar.size()< iteracionesAMostrar && filaInicial.getReloj() >= horaDesde){
+        if (filasAMostrar.size() < iteracionesAMostrar && filaInicial.getReloj() >= horaDesde) {
             filasAMostrar.add(filaInicial);
         }
+        
         int iteraciones = 1;
-        boolean jornada1Terminada = false;
 
-        // Bucle principal
-        // Bucle principal
+        // BUCLE PRINCIPAL REFACTORIZADO
         while (iteraciones < MAX_ITERACIONES) {
-
-            // 1. Determinar el próximo evento (ahora compite también "fin_simulacion")
             String proximoEvento = determinarProximoEvento();
             if (proximoEvento == null) break;
 
-            // 2. Avanzar el reloj al tiempo de ese evento
             double tiempoEvento = getTiempoProximoEvento(proximoEvento);
 
-            // 3. Procesar el evento (el switch se encarga de delegar la lógica)
+            // CORRECCIÓN: El evento de corte "fin_simulacion" ahora se procesa formalmente adentro
             FilaVectorEstado actual = procesarEvento(proximoEvento, tiempoEvento);
             
-            // 4. Filtrar y guardar la fila en la lista para el Front si corresponde
             if (filasAMostrar.size() < iteracionesAMostrar + 1 && actual.getReloj() >= horaDesde) {
                 filasAMostrar.add(actual);
             }
@@ -126,14 +118,12 @@ public class SimuladorCarpinteria {
             iteraciones++;
             ultimaFila = actual;
 
-            // 5. CORRECCIÓN CRÍTICA: Si el evento que se acaba de procesar fue el fin de simulación,
-            // que frene el bucle de manera limpia habiendo generado la última fila formal.
+            // CORRECCIÓN: Si acabamos de procesar el Fin de simulación, salimos limpiamente
             if ("fin_simulacion".equals(proximoEvento)) {
                 break;
             }
         }
 
-        // Construir resultado
         return construirResultado(filasAMostrar, horaDesde, iteracionesAMostrar, tiempoMaximo);
     }
 
@@ -156,22 +146,18 @@ public class SimuladorCarpinteria {
         acumBloqueoC2 = 0;
         finJornada = reloj + JORNADA;
         jornada = 1;
-        filasAMostrar = new ArrayList<FilaVectorEstado>();
+        filasAMostrar = new ArrayList<>();
 
-        // Generar primeras llegadas
-        // ESTANDAR
+        // Primeras llegadas exponenciales
         double rndEst = Math.random();
         primerRNDest = rndEst;
-        double tiempoEst = generarExponencial(mediaEst, rndEst);
-        primerTiempoEst = tiempoEst;
+        primerTiempoEst = generarExponencial(mediaEst, rndEst);
+        proximaLlegadaEstandar = primerTiempoEst;
 
-        proximaLlegadaEstandar = tiempoEst;
-        // A MEDIDA
         double rndMed = Math.random();
         primerRNDmed = rndMed;
-        double tiempoMed = generarExponencial(mediaMed, rndMed);
-        primerTiempoMed = tiempoMed;
-        proximaLlegadaMedida = tiempoMed;
+        primerTiempoMed = generarExponencial(mediaMed, rndMed);
+        proximaLlegadaMedida = primerTiempoMed;
 
         inicioSiguienteJornada = reloj + DIA;
     }
@@ -193,12 +179,13 @@ public class SimuladorCarpinteria {
         fila.setProximaLlegadaMedida(proximaLlegadaMedida);
 
         copiarEstadoServidores(fila);
-        copiarEstadisticasBloqueo(fila, 0,0, 0);
+        copiarEstadisticasBloqueo(fila, 0, 0, 0);
         copiarEstadisticasEspera(fila, 0, 0);
         copiarMueblesVivos(fila);
         return fila;
     }
 
+    // CORRECCIÓN: Se agrega "fin_simulacion" a la competencia de tiempos
     private String determinarProximoEvento() {
         double minTiempo = Double.MAX_VALUE;
         String evento = null;
@@ -223,12 +210,10 @@ public class SimuladorCarpinteria {
             minTiempo = ayudante.getRelojFinBarnizado();
             evento = "fin_barniz";
         }
-        if(finJornada < minTiempo){
+        if (finJornada < minTiempo) {
             minTiempo = finJornada;
             evento = "fin_jornada";
         }
-
-            // NUEVO: El fin de simulación compite por ser el próximo evento
         if (tiempoMaximo < minTiempo) {
             minTiempo = tiempoMaximo;
             evento = "fin_simulacion";
@@ -255,6 +240,7 @@ public class SimuladorCarpinteria {
         fila.setReloj(reloj);
         numIteracion++;
         fila.setIteracion(numIteracion);
+        
         double bloqueoActualC1 = 0;
         double bloqueoActualC2 = 0;
         double esperaEstandarActual = 0;
@@ -271,7 +257,6 @@ public class SimuladorCarpinteria {
                 proximoIdMueble++;
                 fila.setIdProximoMueble(proximoIdMueble);
 
-                // PROXIMA LLEGADA
                 double rnd = Math.random();
                 double tiempo = generarExponencial(mediaEst, rnd);
                 proximaLlegadaEstandar = reloj + tiempo;
@@ -302,7 +287,6 @@ public class SimuladorCarpinteria {
                 proximoIdMueble++;
                 fila.setIdProximoMueble(proximoIdMueble);
 
-                // PROXIMA LLEGADA
                 double rnd = Math.random();
                 double tiempo = generarExponencial(mediaMed, rnd);
                 proximaLlegadaMedida = reloj + tiempo;
@@ -328,15 +312,6 @@ public class SimuladorCarpinteria {
                 Mueble m = carpintero1.getMuebleActual();
                 fila.setIdMueble(m.getId());
 
-              /* double esperaActual = m.getTiempoEsperaEnCola();
-                if (m.getTipo() == Mueble.Tipo.ESTANDAR) {
-                    acumEsperaEstandar += esperaActual;
-                    esperaEstandarActual = esperaActual; 
-                } else {
-                    acumEsperaMedida += esperaActual;
-                    esperaMedidaActual = esperaActual;   
-                }
-*/
                 if (ayudante.getEstado() == Ayudante.Estado.LIBRE) {
                     m.setEstado(Mueble.Estado.SIENDO_BARNIZADO);
                     double rndBarn = Math.random();
@@ -348,10 +323,6 @@ public class SimuladorCarpinteria {
                     m.setEstado(Mueble.Estado.ESPERANDO_BARNIZ);
                     colaBarnizado.add(m);
                     carpintero1.bloquear(reloj);
-                    fila.setContadorMueblesEstandar(contadorEstandar);
-                    fila.setAcumEsperaEstandar(acumEsperaEstandar);
-                    fila.setContadorMueblesMedida(contadorMedida);
-                    fila.setAcumEsperaMedida(acumEsperaMedida);
                 }
                 break;
             }
@@ -359,16 +330,7 @@ public class SimuladorCarpinteria {
                 fila.setEvento("fin fabricacion car. 2");
                 Mueble m = carpintero2.getMuebleActual();
                 fila.setIdMueble(m.getId());
-/*
-                double esperaActual = m.getTiempoEsperaEnCola();
-                if (m.getTipo() == Mueble.Tipo.ESTANDAR) {
-                    acumEsperaEstandar += esperaActual;
-                    esperaEstandarActual = esperaActual; 
-                } else {
-                    acumEsperaMedida += esperaActual;
-                    esperaMedidaActual = esperaActual;   
-                }
-*/
+
                 if (ayudante.getEstado() == Ayudante.Estado.LIBRE) {
                     m.setEstado(Mueble.Estado.SIENDO_BARNIZADO);
                     double rndBarn = Math.random();
@@ -380,10 +342,6 @@ public class SimuladorCarpinteria {
                     m.setEstado(Mueble.Estado.ESPERANDO_BARNIZ);
                     colaBarnizado.add(m);
                     carpintero2.bloquear(reloj);
-                    fila.setContadorMueblesEstandar(contadorEstandar);
-                    fila.setAcumEsperaEstandar(acumEsperaEstandar);
-                    fila.setContadorMueblesMedida(contadorMedida);
-                    fila.setAcumEsperaMedida(acumEsperaMedida);
                 }
                 break;
             }
@@ -427,50 +385,43 @@ public class SimuladorCarpinteria {
                 finJornada = finJornada + DIA;
                 break;
             }
-
+            // CORRECCIÓN: Caso formal de fin de simulación para calcular remanentes reales
             case "fin_simulacion": {
                 fila.setEvento("fin simulacion");
-                // Forzamos al reloj a situarse en el límite exacto pedido por el usuario
-                reloj = tiempoMaximo; 
+                reloj = tiempoMaximo;
                 fila.setReloj(reloj);
                 fila.setIdMueble(null);
                 
-                // En el instante final, recalculamos los bloqueos remanentes si hay carpinteros trabados
-                if (carpintero1.getEstado() == Carpintero.Estado.BLOQUEADO) {
-                    double extra = reloj - carpintero1.getInicioBloqueo();
-                    acumBloqueoC1 += extra;
-                    bloqueoActualC1 = extra;
+                if (carpintero1.getEstado() == Carpintero.Estado.BLOQUEADO && carpintero1.getInicioBloqueo() < reloj) {
+                    bloqueoActualC1 = reloj - carpintero1.getInicioBloqueo();
+                    acumBloqueoC1 += bloqueoActualC1;
                 }
-                if (carpintero2.getEstado() == Carpintero.Estado.BLOQUEADO) {
-                    double extra = reloj - carpintero2.getInicioBloqueo();
-                    acumBloqueoC2 += extra;
-                    bloqueoActualC2 = extra;
+                if (carpintero2.getEstado() == Carpintero.Estado.BLOQUEADO && carpintero2.getInicioBloqueo() < reloj) {
+                    bloqueoActualC2 = reloj - carpintero2.getInicioBloqueo();
+                    acumBloqueoC2 += bloqueoActualC2;
                 }
                 break;
             }
-
         }
 
         if (!tipoEvento.startsWith("llegada")) {
             fila.setProximaLlegadaEstandar(proximaLlegadaEstandar);
             fila.setProximaLlegadaMedida(proximaLlegadaMedida);
         }
-        if (!tipoEvento.startsWith("fin_fab")) {
-            fila.setContadorMueblesEstandar(contadorEstandar);
-            fila.setAcumEsperaEstandar(acumEsperaEstandar);
-
-            fila.setContadorMueblesMedida(contadorMedida);
-            fila.setAcumEsperaMedida(acumEsperaMedida);
-        }
-
+        
+        // Mantener la visualización de los acumuladores estables en las filas comunes
+        fila.setContadorMueblesEstandar(contadorEstandar);
+        fila.setAcumEsperaEstandar(acumEsperaEstandar);
+        fila.setContadorMueblesMedida(contadorMedida);
+        fila.setAcumEsperaMedida(acumEsperaMedida);
 
         copiarEstadoServidores(fila);
-        // CORRECCIÓN: Ahora pasa de manera segmentada cada métrica de espera a la fila
         copiarEstadisticasBloqueo(fila, bloqueoActualC1, bloqueoActualC2, mueblesVivos.size());
         copiarMueblesVivos(fila);
         return fila;
     }
 
+    // CORRECCIÓN: Refactorización del fin de jornada para evitar desfasajes negativos nocturnos
     private FilaVectorEstado procesarFinJornada(double tiempoFin) {
         reloj = tiempoFin;
         FilaVectorEstado fila = new FilaVectorEstado();
@@ -482,44 +433,47 @@ public class SimuladorCarpinteria {
         int enSistema = mueblesVivos.size();
 
         if (carpintero1.getEstado() == Carpintero.Estado.BLOQUEADO) {
-            double extra = reloj - carpintero1.getInicioBloqueo();
-            carpintero1.setInicioBloqueo(carpintero1.getInicioBloqueo() + (DIA-JORNADA));
-            //acumBloqueoC1 += extra;
+            if (carpintero1.getInicioBloqueo() < reloj) {
+                double extra = reloj - carpintero1.getInicioBloqueo();
+                acumBloqueoC1 += extra;
+            }
+            carpintero1.setInicioBloqueo(reloj + (DIA - JORNADA)); // Trasladar al inicio del día siguiente laboral
         }
         if (carpintero2.getEstado() == Carpintero.Estado.BLOQUEADO) {
-            double extra = reloj - carpintero2.getInicioBloqueo();
-            carpintero2.setInicioBloqueo(carpintero2.getInicioBloqueo() + (DIA-JORNADA));
-            //acumBloqueoC2 += extra;
+            if (carpintero2.getInicioBloqueo() < reloj) {
+                double extra = reloj - carpintero2.getInicioBloqueo();
+                acumBloqueoC2 += extra;
+            }
+            carpintero2.setInicioBloqueo(reloj + (DIA - JORNADA));
         }
+        
         jornada++;
-        inicioSiguienteJornada = reloj + (JORNADA*2);
-/*
-        if (carpintero1.getEstado() == Carpintero.Estado.OCUPADO) {
-            double resto = carpintero1.getRelojFinFabricacion() - reloj;
-            carpintero1.setRelojFinFabricacion(inicioSiguienteJornada + resto);
-        }
-        if (carpintero2.getEstado() == Carpintero.Estado.OCUPADO) {
-            double resto = carpintero2.getRelojFinFabricacion() - reloj;
-            carpintero2.setRelojFinFabricacion(inicioSiguienteJornada + resto);
-        }*/
+        inicioSiguienteJornada = reloj + (JORNADA * 2);
 
         if (carpintero1.getEstado() == Carpintero.Estado.OCUPADO) {
             double resto = carpintero1.getRelojFinFabricacion();
-            carpintero1.setRelojFinFabricacion(resto + (DIA-JORNADA));
+            carpintero1.setRelojFinFabricacion(resto + (DIA - JORNADA));
         }
         if (carpintero2.getEstado() == Carpintero.Estado.OCUPADO) {
             double resto = carpintero2.getRelojFinFabricacion();
-            carpintero2.setRelojFinFabricacion(resto+(DIA-JORNADA));
+            carpintero2.setRelojFinFabricacion(resto + (DIA - JORNADA));
         }
         if (ayudante.getEstado() == Ayudante.Estado.OCUPADO) {
             double resto = ayudante.getRelojFinBarnizado();
-            ayudante.setRelojFinBarnizado(resto + (DIA-JORNADA));
+            ayudante.setRelojFinBarnizado(resto + (DIA - JORNADA));
         }
+        
         proximaLlegadaEstandar += DIA - JORNADA;
         proximaLlegadaMedida += DIA - JORNADA;
 
         copiarEstadoServidores(fila);
-        copiarEstadisticasBloqueo(fila, 0,0, enSistema);
+        copiarEstadisticasBloqueo(fila, 0, 0, enSistema);
+        
+        fila.setContadorMueblesEstandar(contadorEstandar);
+        fila.setAcumEsperaEstandar(acumEsperaEstandar);
+        fila.setContadorMueblesMedida(contadorMedida);
+        fila.setAcumEsperaMedida(acumEsperaMedida);
+
         fila.setIdMueble(((int) inicioSiguienteJornada));
         fila.setMueblesVivos(new ArrayList<>());
         return fila;
@@ -529,6 +483,7 @@ public class SimuladorCarpinteria {
         Mueble siguiente = null;
         double esperaEstandarActual = 0;
         double esperaMedidaActual = 0;
+        
         if (!colaMedida.isEmpty()) {
             siguiente = colaMedida.poll();
         } else if (!colaEstandar.isEmpty()) {
@@ -544,28 +499,26 @@ public class SimuladorCarpinteria {
             if (siguiente.getTipo() == Mueble.Tipo.ESTANDAR) {
                 tFab = generarUniforme(fabEstDesde, fabEstHasta, rndFab);
 
-                // Manejar en que jornada llego para el tiempo de espera
-                if(siguiente.getJornadaIngreso() < jornada){
-                    esperaEstandarActual = siguiente.getTiempoEsperaEnCola() - (960*(jornada-siguiente.getJornadaIngreso()));
+                if (siguiente.getJornadaIngreso() < jornada) {
+                    esperaEstandarActual = siguiente.getTiempoEsperaEnCola() - (960.0 * (jornada - siguiente.getJornadaIngreso()));
                     acumEsperaEstandar += esperaEstandarActual;
-                }else{
+                } else {
                     esperaEstandarActual = siguiente.getTiempoEsperaEnCola();
-                    acumEsperaEstandar += esperaEstandarActual;}
+                    acumEsperaEstandar += esperaEstandarActual;
+                }
             } else {
                 tFab = generarUniforme(fabMedDesde, fabMedHasta, rndFab);
-                if(siguiente.getJornadaIngreso() < jornada){
-                    esperaMedidaActual = siguiente.getTiempoEsperaEnCola() - (960*(jornada-siguiente.getJornadaIngreso()));
+                if (siguiente.getJornadaIngreso() < jornada) {
+                    esperaMedidaActual = siguiente.getTiempoEsperaEnCola() - (960.0 * (jornada - siguiente.getJornadaIngreso()));
                     acumEsperaMedida += esperaMedidaActual;
-                }else{
+                } else {
                     esperaMedidaActual = siguiente.getTiempoEsperaEnCola();
-                    acumEsperaMedida += esperaMedidaActual;}
-
+                    acumEsperaMedida += esperaMedidaActual;
+                }
             }
             c.iniciarFabricacion(siguiente, rndFab, tFab, reloj);
             copiarEstadisticasEspera(fila, esperaEstandarActual, esperaMedidaActual);
-
-        }
-        else{
+        } else {
             copiarEstadisticasEspera(fila, esperaEstandarActual, esperaMedidaActual);
         }
     }
@@ -577,54 +530,44 @@ public class SimuladorCarpinteria {
     }
 
     private void copiarEstadoServidores(FilaVectorEstado fila) {
-        // Carpintero 1
         fila.setEstadoCarpintero1(carpintero1.getEstadoStr());
         fila.setMuebleCarpintero1(carpintero1.getMuebleActual() != null ? carpintero1.getMuebleActual().getId() : null);
         fila.setRndFabCarpintero1(carpintero1.getEstado() == Carpintero.Estado.OCUPADO ? carpintero1.getRndFabricacion() : null);
         fila.setTiempoFabCarpintero1(carpintero1.getEstado() == Carpintero.Estado.OCUPADO ? carpintero1.getTiempoFabricacion() : null);
         fila.setFinFabCarpintero1(carpintero1.getEstado() == Carpintero.Estado.OCUPADO ? carpintero1.getRelojFinFabricacion() : null);
         fila.setInicioBloqueoC1(carpintero1.getEstado() == Carpintero.Estado.BLOQUEADO ? carpintero1.getInicioBloqueo() : null);
-       // fila.setFinBloqueoC1(carpintero1.getFinBloqueo() > 0 ? carpintero1.getFinBloqueo() : null);
-        if(carpintero1.getFinBloqueo() > 0 && (carpintero1.getEstado() != Carpintero.Estado.BLOQUEADO)){
+        
+        if (carpintero1.getFinBloqueo() > 0 && (carpintero1.getEstado() != Carpintero.Estado.BLOQUEADO)) {
             fila.setFinBloqueoC1(carpintero1.getFinBloqueo());
             carpintero1.setFinBloqueo(0);
         }
 
-        // Carpintero 2
         fila.setEstadoCarpintero2(carpintero2.getEstadoStr());
         fila.setMuebleCarpintero2(carpintero2.getMuebleActual() != null ? carpintero2.getMuebleActual().getId() : null);
         fila.setRndFabCarpintero2(carpintero2.getEstado() == Carpintero.Estado.OCUPADO ? carpintero2.getRndFabricacion() : null);
         fila.setTiempoFabCarpintero2(carpintero2.getEstado() == Carpintero.Estado.OCUPADO ? carpintero2.getTiempoFabricacion() : null);
         fila.setFinFabCarpintero2(carpintero2.getEstado() == Carpintero.Estado.OCUPADO ? carpintero2.getRelojFinFabricacion() : null);
         fila.setInicioBloqueoC2(carpintero2.getEstado() == Carpintero.Estado.BLOQUEADO ? carpintero2.getInicioBloqueo() : null);
-        //fila.setFinBloqueoC2(carpintero2.getFinBloqueo() > 0 ? carpintero2.getFinBloqueo() : null);
-        if(carpintero2.getFinBloqueo() > 0 && (carpintero2.getEstado() != Carpintero.Estado.BLOQUEADO)){
+        
+        if (carpintero2.getFinBloqueo() > 0 && (carpintero2.getEstado() != Carpintero.Estado.BLOQUEADO)) {
             fila.setFinBloqueoC2(carpintero2.getFinBloqueo());
             carpintero2.setFinBloqueo(0);
         }
 
-
-        // Colas
         fila.setColaEstandarCantidad(colaEstandar.size());
         fila.setColaMedidaCantidad(colaMedida.size());
 
-        // Ayudante
         fila.setEstadoAyudante(ayudante.getEstadoStr());
         fila.setRndBarnizado(ayudante.getEstado() == Ayudante.Estado.OCUPADO ? ayudante.getRndBarnizado() : null);
         fila.setTiempoBarnizado(ayudante.getEstado() == Ayudante.Estado.OCUPADO ? ayudante.getTiempoBarnizado() : null);
         fila.setFinBarnizado(ayudante.getEstado() == Ayudante.Estado.OCUPADO ? ayudante.getRelojFinBarnizado() : null);
     }
-    private void copiarEstadisticasEspera(FilaVectorEstado fila, double esperaEst, double esperaMed){
-        fila.setContadorMueblesEstandar(contadorEstandar);
+
+    private void copiarEstadisticasEspera(FilaVectorEstado fila, double esperaEst, double esperaMed) {
         fila.setTiempoEsperaEstandarActual(esperaEst);
-        fila.setAcumEsperaEstandar(acumEsperaEstandar);
-
-        fila.setContadorMueblesMedida(contadorMedida);
         fila.setTiempoEsperaMedidaActual(esperaMed);
-        fila.setAcumEsperaMedida(acumEsperaMedida);
-
-
     }
+
     private void copiarEstadisticasBloqueo(FilaVectorEstado fila, double bloqueoActualC1, double bloqueoActualC2, int mueblesAlFinal) {
         fila.setTiempoBloqueoActualC1(bloqueoActualC1);
         fila.setTiempoBloqueoActualC2(bloqueoActualC2);
@@ -633,7 +576,6 @@ public class SimuladorCarpinteria {
         fila.setAcumTiempoBloqueoC2(acumBloqueoC2);
         fila.setMueblesEnSistemaAlFinal(mueblesAlFinal);
     }
-
 
     private void copiarMueblesVivos(FilaVectorEstado fila) {
         List<MuebleSnapshot> snapshots = new ArrayList<>();
@@ -653,23 +595,12 @@ public class SimuladorCarpinteria {
                                                     double tiempoMaximo) {
         ResultadoSimulacion resultado = new ResultadoSimulacion();
 
-        /*List<FilaVectorEstado> filasAMostrar = new ArrayList<>();
-        int count = 0;
-        for (FilaVectorEstado f : todasLasFilas) {
-            if (f.getReloj() >= horaDesde && count < iteracionesAMostrar) {
-                filasAMostrar.add(f);
-                count++;
-            }
-        }*/
         resultado.setFilasAMostrar(filasAMostrar);
-
-        //FilaVectorEstado ultimaFila = todasLasFilas.isEmpty() ? null : todasLasFilas.get(todasLasFilas.size() - 1);
         resultado.setUltimaFila(ultimaFila);
 
         resultado.setPromedioEsperaEstandar(contadorEstandar > 0 ? acumEsperaEstandar / contadorEstandar : 0);
         resultado.setPromedioEsperaMedida(contadorMedida > 0 ? acumEsperaMedida / contadorMedida : 0);
         
-        // El porcentaje de bloqueo se calcula sobre el reloj total simulado para reflejar la realidad del histórico
         double tiempoTotalSimulado = reloj > 0 ? reloj : 1.0;
         resultado.setPorcentajeBloqueoCarpintero1((acumBloqueoC1 / tiempoTotalSimulado) * 100);
         resultado.setPorcentajeBloqueoCarpintero2((acumBloqueoC2 / tiempoTotalSimulado) * 100);

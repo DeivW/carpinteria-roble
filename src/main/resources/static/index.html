@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Carpintería El Roble - Simulador</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #f0f0f0; }
@@ -59,6 +60,32 @@
         }
         .btn-simular:hover { background: #3d5166; }
 
+        /* Estilo para el botón de Excel pedido por la cátedra */
+        .btn-excel {
+            padding: 8px 25px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1em;
+            cursor: pointer;
+            height: 35px;
+            display: none; /* Arranca oculto hasta tener datos simulados */
+        }
+        .btn-excel:hover { background: #219150; }
+
+        .btn-horas {
+            padding: 4px 10px;
+            background: #7f8c8d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-bottom: 2px;
+        }
+        .btn-horas:hover { background: #95a5a6; }
+
         .panel-stats {
             background: white;
             margin: 0 15px 15px 15px;
@@ -96,23 +123,11 @@
             display: none;
         }
 
-        .panel-grilla h3 {
-            margin-bottom: 10px;
-            color: #2c3e50;
-        }
+        .panel-grilla h3 { margin-bottom: 10px; color: #2c3e50; }
 
-        .tabla-wrapper {
-            overflow-x: auto;
+        .tabla-wrapper { overflow-x: auto; border: 1px solid #ccc; }
+        table { border-collapse: collapse; font-size: 0.78em; white-space: nowrap; }
 
-            border: 1px solid #ccc;
-        }
-        table {
-            border-collapse: collapse;
-            font-size: 0.78em;
-            white-space: nowrap;
-        }
-
-        /* Encabezados de grupo */
         thead tr.fila-grupo th {
             background: #2c3e50;
             color: white;
@@ -122,7 +137,6 @@
             font-size: 0.85em;
         }
 
-        /* Encabezados de columna */
         thead tr.fila-col th {
             background: #4a6fa5;
             color: white;
@@ -132,7 +146,6 @@
             font-size: 0.78em;
         }
 
-        /* Filas de datos */
         tbody tr:nth-child(even) { background: #f7f9fc; }
         tbody tr:hover { background: #eaf0fb; }
 
@@ -143,7 +156,6 @@
             color: #333;
         }
 
-        /* Colores por sección */
         .col-base { background-color: inherit; }
         .col-est { background-color: #fef9e7; }
         .col-med { background-color: #eafaf1; }
@@ -154,30 +166,13 @@
         .col-stats { background-color: #f2f3f4; }
         .col-mueble { background-color: #f9f9f9; }
 
-        /* Separador entre grupos de muebles */
         .sep-mueble { border-left: 2px solid #aaa !important; }
 
-        /* Fila de ultima jornada */
         tr.ultima-fila td { background: #d5e8d4; font-weight: bold; }
 
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-            display: none;
-        }
-
-        .error-msg {
-            color: red;
-            margin-top: 10px;
-            display: none;
-        }
-
-        .info-iteraciones {
-            font-size: 0.85em;
-            color: #666;
-            margin-bottom: 8px;
-        }
+        .loading { text-align: center; padding: 20px; color: #666; display: none; }
+        .error-msg { color: red; margin-top: 10px; display: none; }
+        .info-iteraciones { font-size: 0.85em; color: #666; margin-bottom: 8px; }
 
         .panel-ultima {
             background: white;
@@ -187,7 +182,6 @@
             box-shadow: 0 1px 4px rgba(0,0,0,0.15);
             display: none;
         }
-
         .panel-ultima h3 { margin-bottom: 10px; color: #2c3e50; }
     </style>
 </head>
@@ -195,14 +189,13 @@
 
 <div class="header">CARPINTERIA EL ROBLE - SIMULADOR</div>
 
-<!-- PARÁMETROS -->
 <div class="panel-params">
     <h3>Parámetros de Simulación</h3>
     <div class="params-grid">
         <div class="param-item">
             <label>Tiempo máximo en Horas</label>
             <input type="number" id="calcResultado" value="8" min="1">
-            <button class="btn-horas" onclick="usarEnHoraDesde()">Calcular</button>
+            <button class="btn-horas" onclick="usarEnHoraDesde()">Calcular minutos</button>
             <label>Tiempo máximo en minutos</label>
             <input type="number" id="tiempoMaximo" value="480" min="1">
         </div>
@@ -237,7 +230,10 @@
             <input type="number" id="mediaBarn" value="45" min="0">
         </div>
         <div class="param-item">
-            <button class="btn-simular" onclick="ejecutarSimulacion()">SIMULAR</button>
+            <button class="btn-simular" onclick="ejecutarSimulacion()">▶ SIMULAR</button>
+        </div>
+        <div class="param-item">
+            <button class="btn-excel" id="btnExcel" onclick="exportarGrillaAExcel()">EXPORTAR A EXCEL</button>
         </div>
     </div>
     <div class="error-msg" id="errorMsg"></div>
@@ -245,13 +241,11 @@
 
 <div class="loading" id="loading"> Ejecutando simulación...</div>
 
-<!-- ESTADÍSTICAS FINALES -->
 <div class="panel-stats" id="panelStats">
     <h3>Estadísticas Finales</h3>
     <div class="stats-grid" id="statsGrid"></div>
 </div>
 
-<!-- ÚLTIMA FILA -->
 <div class="panel-ultima" id="panelUltima">
     <h3>⏱ Última fila — Instante final (t = <span id="tiempoFinal"></span> min)</h3>
     <div class="tabla-wrapper">
@@ -259,7 +253,6 @@
     </div>
 </div>
 
-<!-- GRILLA PRINCIPAL -->
 <div class="panel-grilla" id="panelGrilla">
     <h3>Vector de Estados</h3>
     <div class="info-iteraciones" id="infoIteraciones"></div>
@@ -269,10 +262,14 @@
 </div>
 
 <script>
+    // Variable global para retener el JSON devuelto por el Backend sin destruir el árbol DOM
+    let datosUltimaSimulacion = null;
+
     function usarEnHoraDesde() {
-    const total = document.getElementById('calcResultado').value;
-    document.getElementById('tiempoMaximo').value = total*60;
+        const total = document.getElementById('calcResultado').value;
+        document.getElementById('tiempoMaximo').value = total * 60;
     }
+
     async function ejecutarSimulacion() {
         const tiempoMaximo = parseFloat(document.getElementById('tiempoMaximo').value);
         const iteracionesAMostrar = parseInt(document.getElementById('iteracionesAMostrar').value);
@@ -294,6 +291,7 @@
         document.getElementById('panelStats').style.display = 'none';
         document.getElementById('panelGrilla').style.display = 'none';
         document.getElementById('panelUltima').style.display = 'none';
+        document.getElementById('btnExcel').style.display = 'none'; // Reseteamos visibilidad
         document.getElementById('errorMsg').style.display = 'none';
 
         try {
@@ -306,9 +304,15 @@
             if (!resp.ok) throw new Error('Error en el servidor');
             const data = await resp.json();
 
+            // Almacenamos la respuesta de forma segura para la función exportadora
+            datosUltimaSimulacion = data;
+
             mostrarEstadisticas(data);
             mostrarGrilla(data);
             mostrarUltimaFila(data);
+            
+            // Si todo anduvo bien, habilitamos el botón verde de Excel
+            document.getElementById('btnExcel').style.display = 'inline-block';
 
         } catch (e) {
             mostrarError('Error al ejecutar la simulación: ' + e.message);
@@ -359,7 +363,6 @@
     function construirTabla(filas, mostrarMuebles) {
         if (!filas || filas.length === 0) return '<p>Sin filas para mostrar.</p>';
 
-        // 1. Identificar TODOS los IDs únicos de muebles que aparecen en estas filas
         let idsMueblesUnicos = [];
         if (mostrarMuebles) {
             let setIds = new Set();
@@ -368,13 +371,12 @@
                     f.mueblesVivos.forEach(m => setIds.add(m.id));
                 }
             });
-            // Ordenamos numéricamente para que la grilla sea predecible de izquierda a derecha
             idsMueblesUnicos = Array.from(setIds).sort((a, b) => a - b);
         }
 
         const maxMuebles = idsMueblesUnicos.length;
 
-        // --- ENCABEZADOS DE GRUPO (Fila 1 del Thead) ---
+        // --- ENCABEZADOS DE GRUPO ---
         let thGrupo = '<tr class="fila-grupo">';
         thGrupo += '<th colspan="5">Base</th>';
         thGrupo += '<th colspan="3">Llegada Estándar</th>';
@@ -385,7 +387,6 @@
         thGrupo += '<th colspan="4">Ayudante Barniz</th>';
         thGrupo += '<th colspan="12">Estadísticas</th>';
 
-        // Muebles vivos: Una sección de 4 columnas por cada ID único real
         if (mostrarMuebles && maxMuebles > 0) {
             idsMueblesUnicos.forEach(id => {
                 thGrupo += `<th colspan="4">Mueble ID ${id}</th>`;
@@ -393,7 +394,7 @@
         }
         thGrupo += '</tr>';
 
-        // --- ENCABEZADOS DE COLUMNA (Fila 2 del Thead) ---
+        // --- ENCABEZADOS DE COLUMNA ---
         let thCol = '<tr class="fila-col">';
         thCol += '<th class="col-base">Iteración</th>';
         thCol += '<th class="col-base">Evento</th>';
@@ -439,7 +440,6 @@
         thCol += '<th class="col-stats">Acum Bloq</th>';
         thCol += '<th class="col-stats">En Sistema</th>';
 
-        // CORRECCIÓN CRÍTICA: Iteramos sobre la lista de IDs reales, garantizando sincronía total con thGrupo
         if (mostrarMuebles && maxMuebles > 0) {
             idsMueblesUnicos.forEach(() => {
                 thCol += '<th class="col-mueble sep-mueble">ID</th>';
@@ -450,10 +450,10 @@
         }
         thCol += '</tr>';
 
-        // --- FILAS DE DATOS (Tbody) ---
+        // --- FILAS DE DATOS ---
         let tbody = '';
         filas.forEach(f => {
-            const esUltima = f.evento === 'fin jornada';
+            const esUltima = f.evento === 'fin jornada' || f.evento === 'fin simulacion';
             tbody += `<tr class="${esUltima ? 'ultima-fila' : ''}">`;
             tbody += `<td class="col-base">${f.iteracion || ''}</td>`;
             tbody += `<td class="col-base">${f.evento || ''}</td>`;
@@ -499,7 +499,6 @@
             tbody += `<td class="col-stats">${fmt(f.acumTiempoBloqueo)}</td>`;
             tbody += `<td class="col-stats">${f.mueblesEnSistemaAlFinal}</td>`;
 
-            // Renderizado posicional exacto de los objetos temporales
             if (mostrarMuebles && maxMuebles > 0) {
                 const mapaMueblesFila = {};
                 if (f.mueblesVivos) {
@@ -527,6 +526,23 @@
         return `<thead>${thGrupo}${thCol}</thead><tbody>${tbody}</tbody>`;
     }
 
+    // FUNCIÓN DE EXPORTACIÓN DIRECTA CON CONSERVACIÓN DE ESTRUCTURA POSICIONAL
+    function exportarGrillaAExcel() {
+        if (!datosUltimaSimulacion || !datosUltimaSimulacion.filasAMostrar) {
+            alert("No hay datos cargados para exportar. Corra una simulación primero.");
+            return;
+        }
+
+        // Creamos una tabla ficticia temporal en memoria para alimentar la librería SheetJS
+        const tablaTmp = document.createElement('table');
+        tablaTmp.innerHTML = construirTabla(datosUltimaSimulacion.filasAMostrar, true);
+
+        const libroTrabajo = XLSX.utils.table_to_book(tablaTmp, { sheet: "Vector de Estados" });
+        
+        // Exportamos el libro generado a un archivo binario nativo de descarga automática
+        XLSX.writeFile(libroTrabajo, "Simulacion_Carpinteria_Roble.xlsx");
+    }
+
     function mostrarGrilla(data) {
         const panel = document.getElementById('panelGrilla');
         const tabla = document.getElementById('tablaVector');
@@ -547,7 +563,6 @@
         if (!data.ultimaFila) return;
 
         spanTiempo.textContent = fmt(data.ultimaFila.reloj);
-        // La ultima fila no tiene muebles vivos
         tabla.innerHTML = construirTabla([data.ultimaFila], false);
         panel.style.display = 'block';
     }
